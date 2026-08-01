@@ -5,6 +5,8 @@ import Link from "next/link";
 export default function OgrencilerPage() {
   const [ogrenciler, setOgrenciler] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [nfcDestegi, setNfcDestegi] = useState(false);
+  const [nfcOkunuyor, setNfcOkunuyor] = useState(false);
   const [grupLink, setGrupLink] = useState(
     "https://chat.whatsapp.com/Kx1Y2z3abc456def...",
   );
@@ -22,15 +24,20 @@ export default function OgrencilerPage() {
     odemeGunu: 1,
   });
 
+  useEffect(() => {
+    ogrencileriGetir();
+    if (typeof window !== "undefined" && "NDEFReader" in window) {
+      setNfcDestegi(true);
+    }
+  }, []);
+
   const ogrencileriGetir = async () => {
     try {
       const res = await fetch("/api/ogrenciler?durum=AKTIF", {
         cache: "no-store",
       });
       const result = await res.json();
-      if (result.success) {
-        setOgrenciler(result.data);
-      }
+      if (result.success) setOgrenciler(result.data);
     } catch (error) {
       console.error("Öğrenciler yüklenemedi:", error);
     } finally {
@@ -38,9 +45,29 @@ export default function OgrencilerPage() {
     }
   };
 
-  useEffect(() => {
-    ogrencileriGetir();
-  }, []);
+  const telefondanKartOku = async () => {
+    try {
+      const ndef = new window.NDEFReader();
+      await ndef.scan();
+      setNfcOkunuyor(true);
+
+      ndef.addEventListener("reading", ({ serialNumber }) => {
+        if (serialNumber) {
+          setYeniOgrenci((prev) => ({ ...prev, nfcUid: serialNumber }));
+          setNfcOkunuyor(false);
+          alert(`NFC Kart Başarıyla Okundu! UID: ${serialNumber}`);
+        }
+      });
+
+      ndef.addEventListener("readingerror", () => {
+        alert("NFC Kart okunamadı, lütfen tekrar yaklaştırın.");
+        setNfcOkunuyor(false);
+      });
+    } catch (error) {
+      alert("Telefon NFC okuyucusu başlatılamadı veya izin verilmedi.");
+      setNfcOkunuyor(false);
+    }
+  };
 
   const whatsappDavetGonder = (veliAd, telefon) => {
     if (!telefon) return;
@@ -107,11 +134,10 @@ export default function OgrencilerPage() {
     }
   };
 
-  // ÖĞRENCİYİ ARŞİVLE (PASİFE AL)
   const ogrenciArsivle = async (id, adSoyad) => {
     if (
       !confirm(
-        `${adSoyad} isimli öğrenciyi arşivlemek (pasife almak) istediğinize emin misiniz?`,
+        `${adSoyad} isimli öğrenciyi dondurmak/arşivlemek istediğinize emin misiniz?`,
       )
     )
       return;
@@ -137,19 +163,47 @@ export default function OgrencilerPage() {
 
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto font-sans bg-slate-100 min-h-screen">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+      {/* 🚀 ÜST GEZİNTİ MENÜSÜ / HIZLI KISAYOLLAR */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-8">
+        <div className="flex items-center gap-2">
+          <Link
+            href="/"
+            className="bg-slate-900 hover:bg-black text-white px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-1.5"
+          >
+            🏠 Ana Sayfa
+          </Link>
+          <Link
+            href="/yoklama/nfc"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-1.5"
+          >
+            📲 NFC Yoklama İstasyonu
+          </Link>
+          <Link
+            href="/duyurular"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-1.5"
+          >
+            📢 Duyuru & WhatsApp
+          </Link>
+          <Link
+            href="/muhasebe"
+            className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-1.5"
+          >
+            💰 Muhasebe
+          </Link>
+        </div>
+
+        <Link
+          href="/ogrenciler/arsiv"
+          className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-4 rounded-xl text-xs transition shadow-sm flex items-center gap-1.5"
+        >
+          📁 Pasif / Ayrılan Öğrenci Arşivi →
+        </Link>
+      </div>
+
+      <div className="mb-6">
         <h1 className="text-3xl font-black text-slate-950 tracking-tight">
           🎓 Aktif Öğrenci Yönetimi
         </h1>
-
-        {/* ARŞİV EKRANINA GİT BUTONU */}
-        <Link
-          href="/ogrenciler/arsiv"
-          className="bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 px-5 rounded-xl text-sm transition shadow-md flex items-center gap-2 self-start md:self-auto"
-        >
-          <span>📁</span>
-          <span>Ayrılan / Pasif Öğrenci Arşivi →</span>
-        </Link>
       </div>
 
       {/* YENİ ÖĞRENCİ KAYIT FORMU */}
@@ -299,20 +353,39 @@ export default function OgrencilerPage() {
             </div>
           </div>
 
-          {/* DİĞER KURS BİLGİLERİ */}
+          {/* NFC KART TANITMA ALANI */}
           <div>
             <label className="block text-xs font-black text-slate-900 uppercase tracking-wider mb-1.5">
-              NFC Kart UID (Opsiyonel)
+              NFC Kart UID (USB Okuyucu veya Telefon)
             </label>
-            <input
-              type="text"
-              className="w-full border-2 border-slate-400 p-3 rounded-xl text-sm font-black font-mono text-slate-950 bg-slate-50 focus:bg-white focus:border-blue-600 outline-none transition"
-              placeholder="123456789"
-              value={yeniOgrenci.nfcUid}
-              onChange={(e) =>
-                setYeniOgrenci({ ...yeniOgrenci, nfcUid: e.target.value })
-              }
-            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                className="w-full border-2 border-slate-400 p-3 rounded-xl text-sm font-black font-mono text-slate-950 bg-slate-50 focus:bg-white focus:border-blue-600 outline-none transition"
+                placeholder="USB Okuyucuyla dokundurun..."
+                value={yeniOgrenci.nfcUid}
+                onChange={(e) =>
+                  setYeniOgrenci({ ...yeniOgrenci, nfcUid: e.target.value })
+                }
+              />
+
+              {nfcDestegi && (
+                <button
+                  type="button"
+                  onClick={telefondanKartOku}
+                  className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-1 shrink-0 ${
+                    nfcOkunuyor
+                      ? "bg-emerald-600 text-white animate-pulse"
+                      : "bg-indigo-600 hover:bg-indigo-700 text-white"
+                  }`}
+                >
+                  <span>📱</span>
+                  <span>
+                    {nfcOkunuyor ? "Kartı Yaklaştır..." : "Telefonla Oku"}
+                  </span>
+                </button>
+              )}
+            </div>
           </div>
 
           <div>
