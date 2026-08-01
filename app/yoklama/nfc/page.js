@@ -41,18 +41,7 @@ export default function NfcYoklamaPage() {
       if (result.success) {
         setSonOkutulan(result.data);
         setNfcUid("");
-
-        const o = result.data.ogrenci;
-        if (o && o.veliTelefon) {
-          const temizTel = o.veliTelefon.replace(/\D/g, "");
-          const tel = temizTel.startsWith("90") ? temizTel : `90${temizTel}`;
-          const mesaj = `Sayın ${o.veliAdSoyad}, öğrencimiz ${o.adSoyad} bugün saat ${new Date().toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })} itibarıyla Balans Cimnastik tesisine giriş yapmıştır. 🤸‍♀️`;
-
-          window.open(
-            `https://wa.me/${tel}?text=${encodeURIComponent(mesaj)}`,
-            "_blank",
-          );
-        }
+        // ❌ WHATSAPP MESAJI BURADAN KALDIRILDI (Sadece yoklama kaydediliyor)
       } else {
         setHata(result.error || "Kart tanımlı değil veya bir hata oluştu.");
         setNfcUid("");
@@ -110,7 +99,7 @@ export default function NfcYoklamaPage() {
           🤸‍♀️ Balans Cimnastik
         </h1>
         <p className="text-slate-400 font-medium mb-8 text-sm">
-          USB okuyucuya dokundurun veya telefon NFC okuyucusunu başlatın
+          Lütfen kartınızı okuyucuya dokundurun
         </p>
 
         {nfcDestegi && (
@@ -173,8 +162,7 @@ export default function NfcYoklamaPage() {
               {sonOkutulan.ogrenci?.adSoyad}
             </div>
             <div className="text-sm font-semibold text-slate-300">
-              Veli: {sonOkutulan.ogrenci?.veliAdSoyad} (
-              {sonOkutulan.ogrenci?.veliTelefon})
+              Yoklama başarıyla kaydedildi.
             </div>
           </div>
         )}

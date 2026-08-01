@@ -7,6 +7,7 @@ export default function OgrencilerPage() {
   const [loading, setLoading] = useState(true);
   const [nfcDestegi, setNfcDestegi] = useState(false);
   const [nfcOkunuyor, setNfcOkunuyor] = useState(false);
+  const [topluMesajMetni, setTopluMesajMetni] = useState("");
   const [grupLink, setGrupLink] = useState(
     "https://chat.whatsapp.com/Kx1Y2z3abc456def...",
   );
@@ -69,15 +70,38 @@ export default function OgrencilerPage() {
     }
   };
 
-  const whatsappDavetGonder = (veliAd, telefon) => {
+  // 💬 WHATSAPP MESAJ GÖNDERME FONKSİYONU
+  const whatsappMesajGonder = (telefon, mesaj) => {
     if (!telefon) return;
     const temizTel = telefon.replace(/\D/g, "");
     const tel = temizTel.startsWith("90") ? temizTel : `90${temizTel}`;
-    const mesaj = `Sayın ${veliAd}, Balans Cimnastik ailesine hoş geldiniz! 🤸\n\nResmi duyuru ve bilgilendirmeleri takip edebileceğiniz WhatsApp Veliler Grubumuza katılmak için lütfen aşağıdaki bağlantıya tıklayın:\n\n${grupLink}`;
     window.open(
       `https://wa.me/${tel}?text=${encodeURIComponent(mesaj)}`,
       "_blank",
     );
+  };
+
+  // 📢 TOPLU MESAJ GÖNDERME (Her velinin sohbetini sırayla açar)
+  const topluMesajGonder = () => {
+    if (!topluMesajMetni.trim()) {
+      alert("Lütfen gönderilecek mesajı yazın!");
+      return;
+    }
+
+    if (
+      confirm(
+        `Toplam ${ogrenciler.length} öğrencinin velisine WhatsApp mesajı açılacaktır. Devam edilsin mi?`,
+      )
+    ) {
+      ogrenciler.forEach((o, index) => {
+        setTimeout(() => {
+          if (o.veliTelefon)
+            whatsappMesajGonder(o.veliTelefon, topluMesajMetni);
+          if (o.ikinciVeliTelefon)
+            whatsappMesajGonder(o.ikinciVeliTelefon, topluMesajMetni);
+        }, index * 1000); // Tarayıcı engellemesin diye 1 sn arayla açar
+      });
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -93,24 +117,16 @@ export default function OgrencilerPage() {
       if (result.success) {
         alert("Öğrenci kaydı başarıyla oluşturuldu! 🎉");
 
-        if (
-          confirm(
-            `1. Veli (${yeniOgrenci.veliAdSoyad}) için WhatsApp grup daveti gönderilsin mi?`,
-          )
-        ) {
-          whatsappDavetGonder(yeniOgrenci.veliAdSoyad, yeniOgrenci.veliTelefon);
-        }
+        // 1. VELİ İÇİN GRUP KATILIM MESAJI
+        const mesaj1 = `Sayın ${yeniOgrenci.veliAdSoyad}, ${yeniOgrenci.adSoyad} isimli öğrencimizin kaydı Balans Cimnastik kulübümüze tamamlanmıştır! 🤸‍♀️\n\nResmi duyuruları takip edebileceğiniz WhatsApp Veliler Grubumuza katılmak için tıklayın:\n${grupLink}`;
+        whatsappMesajGonder(yeniOgrenci.veliTelefon, mesaj1);
 
-        if (
-          yeniOgrenci.ikinciVeliTelefon &&
-          confirm(
-            `2. Veli (${yeniOgrenci.ikinciVeliAdSoyad}) için WhatsApp grup daveti gönderilsin mi?`,
-          )
-        ) {
-          whatsappDavetGonder(
-            yeniOgrenci.ikinciVeliAdSoyad,
-            yeniOgrenci.ikinciVeliTelefon,
-          );
+        // 2. VELİ İÇİN GRUP KATILIM MESAJI (Varsa)
+        if (yeniOgrenci.ikinciVeliTelefon) {
+          setTimeout(() => {
+            const mesaj2 = `Sayın ${yeniOgrenci.ikinciVeliAdSoyad}, ${yeniOgrenci.adSoyad} isimli öğrencimizin kaydı Balans Cimnastik kulübümüze tamamlanmıştır! 🤸‍♀️\n\nResmi duyuruları takip edebileceğiniz WhatsApp Veliler Grubumuza katılmak için tıklayın:\n${grupLink}`;
+            whatsappMesajGonder(yeniOgrenci.ikinciVeliTelefon, mesaj2);
+          }, 1000);
         }
 
         setYeniOgrenci({
@@ -163,7 +179,7 @@ export default function OgrencilerPage() {
 
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto font-sans bg-slate-100 min-h-screen">
-      {/* 🚀 ÜST GEZİNTİ MENÜSÜ / HIZLI KISAYOLLAR */}
+      {/* ÜST GEZİNTİ MENÜSÜ */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-8">
         <div className="flex items-center gap-2">
           <Link
@@ -179,12 +195,6 @@ export default function OgrencilerPage() {
             📲 NFC Yoklama İstasyonu
           </Link>
           <Link
-            href="/duyurular"
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-1.5"
-          >
-            📢 Duyuru & WhatsApp
-          </Link>
-          <Link
             href="/muhasebe"
             className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-1.5"
           >
@@ -196,7 +206,7 @@ export default function OgrencilerPage() {
           href="/ogrenciler/arsiv"
           className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-4 rounded-xl text-xs transition shadow-sm flex items-center gap-1.5"
         >
-          📁 Pasif / Ayrılan Öğrenci Arşivi →
+          📁 Pasif Öğrenci Arşivi →
         </Link>
       </div>
 
@@ -204,6 +214,32 @@ export default function OgrencilerPage() {
         <h1 className="text-3xl font-black text-slate-950 tracking-tight">
           🎓 Aktif Öğrenci Yönetimi
         </h1>
+      </div>
+
+      {/* 📢 TOPLU MESAJ GÖNDERME PANELSİ */}
+      <div className="bg-emerald-900 text-white p-6 rounded-3xl shadow-lg border border-emerald-800 mb-8">
+        <h3 className="text-lg font-black mb-2 flex items-center gap-2">
+          <span>📢</span> Tüm Velilere Toplu WhatsApp Mesajı Gönder
+        </h3>
+        <p className="text-xs text-emerald-200 mb-4 font-medium">
+          Aşağıya yazacağınız mesaj tüm aktif öğrencilerin anne ve babalarının
+          WhatsApp hesabına sırayla iletilir.
+        </p>
+        <div className="flex flex-col md:flex-row gap-3">
+          <input
+            type="text"
+            placeholder="Örn: Değerli velilerimiz, yarın saat 15:00'te antrenmanımız salon bakımı nedeniyle yapılmayacaktır."
+            className="w-full bg-slate-950 border border-emerald-700 text-white px-4 py-3 rounded-xl text-sm font-semibold outline-none focus:border-emerald-400"
+            value={topluMesajMetni}
+            onChange={(e) => setTopluMesajMetni(e.target.value)}
+          />
+          <button
+            onClick={topluMesajGonder}
+            className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-6 py-3 rounded-xl text-sm transition shrink-0 shadow-md"
+          >
+            🚀 Toplu Gönder
+          </button>
+        </div>
       </div>
 
       {/* YENİ ÖĞRENCİ KAYIT FORMU */}
@@ -356,7 +392,7 @@ export default function OgrencilerPage() {
           {/* NFC KART TANITMA ALANI */}
           <div>
             <label className="block text-xs font-black text-slate-900 uppercase tracking-wider mb-1.5">
-              NFC Kart UID (USB Okuyucu veya Telefon)
+              NFC Kart UID
             </label>
             <div className="flex gap-2">
               <input
@@ -454,9 +490,8 @@ export default function OgrencilerPage() {
                   <th className="p-4">Öğrenci Adı</th>
                   <th className="p-4">1. Veli (Ana)</th>
                   <th className="p-4">2. Veli (Ek)</th>
-                  <th className="p-4">NFC UID</th>
                   <th className="p-4">Ücret</th>
-                  <th className="p-4 text-right">Eylem</th>
+                  <th className="p-4 text-right">Eylem & Mesaj</th>
                 </tr>
               </thead>
               <tbody>
@@ -496,19 +531,40 @@ export default function OgrencilerPage() {
                         </span>
                       )}
                     </td>
-                    <td className="p-4 font-mono font-black text-xs text-indigo-950 bg-slate-100/80 px-2 py-1 rounded">
-                      {o.nfcUid || "Tanımlı Değil"}
-                    </td>
                     <td className="p-4 font-black text-emerald-700 text-base">
                       ₺ {o.aylikUcret}
                     </td>
                     <td className="p-4 text-right">
-                      <button
-                        onClick={() => ogrenciArsivle(o._id, o.adSoyad)}
-                        className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 font-bold py-1.5 px-3 rounded-lg text-xs transition inline-flex items-center gap-1"
-                      >
-                        📁 Arşivle / Pasif Et
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        {/* 💬 BİREYSEL ÖĞRENCİYE ÖZEL WHATSAPP MESAJI */}
+                        <button
+                          onClick={() => {
+                            const m = prompt(
+                              `${o.adSoyad} isimli öğrencinin velisine gönderilecek mesajı yazın:`,
+                            );
+                            if (m) {
+                              if (o.veliTelefon)
+                                whatsappMesajGonder(o.veliTelefon, m);
+                              if (o.ikinciVeliTelefon)
+                                setTimeout(
+                                  () =>
+                                    whatsappMesajGonder(o.ikinciVeliTelefon, m),
+                                  1000,
+                                );
+                            }
+                          }}
+                          className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold py-1.5 px-3 rounded-lg text-xs transition inline-flex items-center gap-1"
+                        >
+                          💬 Mesaj At
+                        </button>
+
+                        <button
+                          onClick={() => ogrenciArsivle(o._id, o.adSoyad)}
+                          className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 font-bold py-1.5 px-3 rounded-lg text-xs transition inline-flex items-center gap-1"
+                        >
+                          📁 Arşivle
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
