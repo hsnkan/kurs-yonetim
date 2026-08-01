@@ -1,65 +1,179 @@
-import Image from "next/image";
+"use client";
+import { useState, useEffect } from "react";
+import Link from "next/link";
 
-export default function Home() {
+export default function DashboardPage() {
+  const [ozet, setOzet] = useState({
+    toplamOgrenci: 0,
+    bugunGelenler: 0,
+    bekleyenOdemeSayisi: 0,
+    buAyGelir: 0,
+    sonYoklamalar: [],
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function dashboardVerileriniGetir() {
+      try {
+        // Öğrenci verileri
+        const ogrenciRes = await fetch("/api/ogrenciler", {
+          cache: "no-store",
+        });
+        const ogrenciText = await ogrenciRes.text();
+        const ogrenciData = ogrenciText
+          ? JSON.parse(ogrenciText)
+          : { success: false, data: [] };
+
+        // Muhasebe verileri
+        const muhasebeRes = await fetch("/api/muhasebe", { cache: "no-store" });
+        const muhasebeText = await muhasebeRes.text();
+        const muhasebeData = muhasebeText
+          ? JSON.parse(muhasebeText)
+          : {
+              success: false,
+              data: { odemesiBekleyenler: [], buAyToplamGelir: 0 },
+            };
+
+        if (ogrenciData.success || muhasebeData.success) {
+          setOzet({
+            toplamOgrenci: ogrenciData.data?.length || 0,
+            bugunGelenler: 0,
+            bekleyenOdemeSayisi:
+              muhasebeData.data?.odemesiBekleyenler?.length || 0,
+            buAyGelir: muhasebeData.data?.buAyToplamGelir || 0,
+            sonYoklamalar: [],
+          });
+        }
+      } catch (error) {
+        console.error("Dashboard verileri yüklenemedi:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    dashboardVerileriniGetir();
+  }, []);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.js file.
+    <div className="min-h-screen bg-slate-50 font-sans p-6 md:p-10">
+      {/* ÜST BAŞLIK */}
+      <div className="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+            🤸 Balans Cimnastik Yönetim Paneli
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-slate-500 text-sm mt-1">
+            Hoş geldiniz! Kurs genel durumu ve bugünün hareket özetleri.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
+            ● Sistem Aktif
+          </span>
         </div>
-      </main>
+      </div>
+
+      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+        {/* İSTATİSTİK KARTLARI */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <p className="text-xs font-semibold uppercase text-slate-400 tracking-wider">
+            Toplam Öğrenci
+          </p>
+          <p className="text-3xl font-bold text-slate-800 mt-2">
+            {loading ? "..." : ozet.toplamOgrenci}
+          </p>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <p className="text-xs font-semibold uppercase text-slate-400 tracking-wider">
+            Bu Ayki Gelir
+          </p>
+          <p className="text-3xl font-bold text-emerald-600 mt-2">
+            ₺ {loading ? "..." : ozet.buAyGelir}
+          </p>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <p className="text-xs font-semibold uppercase text-slate-400 tracking-wider">
+            Ödemesi Bekleyen
+          </p>
+          <p className="text-3xl font-bold text-amber-600 mt-2">
+            {loading ? "..." : `${ozet.bekleyenOdemeSayisi} Kişi`}
+          </p>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <p className="text-xs font-semibold uppercase text-slate-400 tracking-wider">
+            NFC Yoklama İstasyonu
+          </p>
+          <p className="text-sm font-semibold text-indigo-600 mt-3">
+            Hazır & Dinleniyor
+          </p>
+        </div>
+      </div>
+
+      {/* HIZLI ERİŞİM KISAYOLLARI */}
+      <div className="max-w-7xl mx-auto mb-10">
+        <h2 className="text-lg font-bold text-slate-800 mb-4">🚀 Hızlı Menü</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Link
+            href="/ogrenciler"
+            className="group p-6 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-300 transition duration-200 flex flex-col justify-between"
+          >
+            <div>
+              <div className="text-3xl mb-3">🎓</div>
+              <h3 className="text-lg font-bold text-slate-800 group-hover:text-indigo-600 transition">
+                Öğrenci Yönetimi
+              </h3>
+              <p className="text-slate-500 text-xs mt-1">
+                Yeni kayıt ekleyin, NFC kart tanımlayın ve öğrenci listesini
+                inceleyin.
+              </p>
+            </div>
+            <span className="text-xs font-semibold text-indigo-600 mt-4 inline-flex items-center gap-1">
+              Modüle Git →
+            </span>
+          </Link>
+
+          <Link
+            href="/yoklama/nfc"
+            className="group p-6 bg-slate-900 text-white rounded-2xl shadow-sm hover:shadow-lg transition duration-200 flex flex-col justify-between"
+          >
+            <div>
+              <div className="text-3xl mb-3">🎛️</div>
+              <h3 className="text-lg font-bold text-white group-hover:text-emerald-400 transition">
+                NFC Yoklama Ekranı
+              </h3>
+              <p className="text-slate-400 text-xs mt-1">
+                Kapanmayan koyu mod ekranı açın, salona giren öğrencilerin
+                kartını okutun.
+              </p>
+            </div>
+            <span className="text-xs font-semibold text-emerald-400 mt-4 inline-flex items-center gap-1">
+              İstasyonu Başlat →
+            </span>
+          </Link>
+
+          <Link
+            href="/muhasebe"
+            className="group p-6 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-300 transition duration-200 flex flex-col justify-between"
+          >
+            <div>
+              <div className="text-3xl mb-3">💰</div>
+              <h3 className="text-lg font-bold text-slate-800 group-hover:text-emerald-600 transition">
+                Muhasebe & WhatsApp
+              </h3>
+              <p className="text-slate-500 text-xs mt-1">
+                Ödemesi gelen velileri görün, tek tıkla WhatsApp hatırlatması
+                gönderin.
+              </p>
+            </div>
+            <span className="text-xs font-semibold text-emerald-600 mt-4 inline-flex items-center gap-1">
+              Muhasebeyi Aç →
+            </span>
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }
