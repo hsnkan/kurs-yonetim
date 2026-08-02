@@ -1,32 +1,32 @@
-'use client';
-import { useState, useEffect } from 'react';
+"use client";
+import { useState, useEffect } from "react";
 
 export default function OgrencilerPage() {
   const [ogrenciler, setOgrenciler] = useState([]);
   const [gruplar, setGruplar] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [aramaMetni, setAramaMetni] = useState('');
-  const [seciliGrupFiltre, setSeciliGrupFiltre] = useState('TUMU');
-  
+  const [aramaMetni, setAramaMetni] = useState("");
+  const [seciliGrupFiltre, setSeciliGrupFiltre] = useState("TUMU");
+
   // Transfer ve Grup Yönetimi Modal Durumları
   const [transferOgrenci, setTransferOgrenci] = useState(null);
-  const [yeniHedefGrup, setYeniHedefGrup] = useState('');
+  const [yeniHedefGrup, setYeniHedefGrup] = useState("");
   const [grupYonetimAcik, setGrupYonetimAcik] = useState(false);
-  const [yeniEklenecekGrupAd, setYeniEklenecekGrupAd] = useState('');
+  const [yeniEklenecekGrupAd, setYeniEklenecekGrupAd] = useState("");
 
   const [seciliOgrenciDetay, setSeciliOgrenciDetay] = useState(null);
   const [detayLoading, setDetayLoading] = useState(false);
 
   const [yeniOgrenci, setYeniOgrenci] = useState({
-    adSoyad: '',
-    grup: '',
-    veliAdSoyad: '',
-    veliTelefon: '',
-    veliYakinlik: 'Anne',
-    ikinciVeliAdSoyad: '',
-    ikinciVeliTelefon: '',
-    ikinciVeliYakinlik: 'Baba',
-    nfcUid: '',
+    adSoyad: "",
+    grup: "",
+    veliAdSoyad: "",
+    veliTelefon: "",
+    veliYakinlik: "Anne",
+    ikinciVeliAdSoyad: "",
+    ikinciVeliTelefon: "",
+    ikinciVeliYakinlik: "Baba",
+    nfcUid: "",
     aylikUcret: 5000,
     odemeGunu: 1,
   });
@@ -41,7 +41,7 @@ export default function OgrencilerPage() {
 
   const gruplariGetir = async () => {
     try {
-      const res = await fetch('/api/gruplar', { cache: 'no-store' });
+      const res = await fetch("/api/gruplar", { cache: "no-store" });
       const result = await res.json();
       if (result.success) {
         setGruplar(result.data || []);
@@ -50,20 +50,23 @@ export default function OgrencilerPage() {
         }
       }
     } catch (err) {
-      console.error('Gruplar çekilemedi:', err);
+      console.error("Gruplar çekilemedi:", err);
     }
   };
 
   const ogrencileriGetir = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/ogrenciler?durum=AKTIF&grup=${seciliGrupFiltre}`, { cache: 'no-store' });
+      const res = await fetch(
+        `/api/ogrenciler?durum=AKTIF&grup=${seciliGrupFiltre}`,
+        { cache: "no-store" },
+      );
       const result = await res.json();
       if (result.success) setOgrenciler(result.data || []);
     } catch (error) {
-      console.error('Öğrenciler yüklenemedi:', error);
+      console.error("Öğrenciler yüklenemedi:", error);
       setOgrenciler([]);
-    } font-sans finally {
+    } finally {
       setLoading(false);
     }
   };
@@ -74,21 +77,21 @@ export default function OgrencilerPage() {
     if (!yeniEklenecekGrupAd.trim()) return;
 
     try {
-      const res = await fetch('/api/gruplar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/gruplar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ad: yeniEklenecekGrupAd }),
       });
       const result = await res.json();
       if (result.success) {
-        setYeniEklenecekGrupAd('');
+        setYeniEklenecekGrupAd("");
         gruplariGetir();
-        alert('Yeni grup başarıyla eklendi! 🎉');
+        alert("Yeni grup başarıyla eklendi! 🎉");
       } else {
-        alert(result.error || 'Grup eklenemedi.');
+        alert(result.error || "Grup eklenemedi.");
       }
     } catch (err) {
-      alert('Grup ekleme hatası.');
+      alert("Grup ekleme hatası.");
     }
   };
 
@@ -96,9 +99,9 @@ export default function OgrencilerPage() {
   const grupSil = async (id, ad) => {
     if (!confirm(`"${ad}" grubunu silmek istediğinize emin misiniz?`)) return;
     try {
-      const res = await fetch('/api/gruplar', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/gruplar", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),
       });
       const result = await res.json();
@@ -106,7 +109,7 @@ export default function OgrencilerPage() {
         gruplariGetir();
       }
     } catch (err) {
-      alert('Grup silinirken hata oluştu.');
+      alert("Grup silinirken hata oluştu.");
     }
   };
 
@@ -115,15 +118,17 @@ export default function OgrencilerPage() {
     if (!transferOgrenci || !yeniHedefGrup) return;
 
     try {
-      const res = await fetch('/api/ogrenciler', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/ogrenciler", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: transferOgrenci._id, grup: yeniHedefGrup }),
       });
 
       const result = await res.json();
       if (result.success) {
-        alert(`${transferOgrenci.adSoyad} başarıyla "${yeniHedefGrup}" grubuna transfer edildi! 🎉`);
+        alert(
+          `${transferOgrenci.adSoyad} başarıyla "${yeniHedefGrup}" grubuna transfer edildi! 🎉`,
+        );
         setTransferOgrenci(null);
         if (seciliOgrenciDetay?.ogrenci._id === transferOgrenci._id) {
           setSeciliOgrenciDetay((prev) => ({
@@ -134,31 +139,36 @@ export default function OgrencilerPage() {
         ogrencileriGetir();
       }
     } catch (err) {
-      alert('Transfer işleminde hata oluştu.');
+      alert("Transfer işleminde hata oluştu.");
     }
   };
 
   const ogrenciDetayGetir = async (id) => {
     setDetayLoading(true);
     try {
-      const res = await fetch(`/api/ogrenciler/detay?id=${id}`, { cache: 'no-store' });
+      const res = await fetch(`/api/ogrenciler/detay?id=${id}`, {
+        cache: "no-store",
+      });
       const result = await res.json();
       if (result.success) {
         setSeciliOgrenciDetay(result.data);
       }
     } catch (err) {
-      alert('Öğrenci detayları alınamadı.');
+      alert("Öğrenci detayları alınamadı.");
     } finally {
       setDetayLoading(false);
     }
   };
 
   const kaliciSil = async (id, adSoyad) => {
-    if (!confirm(`⚠️ UYARI: ${adSoyad} kalıcı olarak silinecektir! Emin misiniz?`)) return;
+    if (
+      !confirm(`⚠️ UYARI: ${adSoyad} kalıcı olarak silinecektir! Emin misiniz?`)
+    )
+      return;
     try {
-      const res = await fetch('/api/ogrenciler/sil', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/ogrenciler/sil", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),
       });
       const result = await res.json();
@@ -168,56 +178,62 @@ export default function OgrencilerPage() {
         ogrencileriGetir();
       }
     } catch (err) {
-      alert('Silme hatası');
+      alert("Silme hatası");
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/ogrenciler', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/ogrenciler", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(yeniOgrenci),
       });
 
       const result = await res.json();
       if (result.success) {
-        alert(`${yeniOgrenci.adSoyad} "${yeniOgrenci.grup}" kadrosuna kaydedildi! 🎉`);
+        alert(
+          `${yeniOgrenci.adSoyad} "${yeniOgrenci.grup}" kadrosuna kaydedildi! 🎉`,
+        );
         setYeniOgrenci({
-          adSoyad: '',
-          grup: gruplar.length > 0 ? gruplar[0].ad : '',
-          veliAdSoyad: '',
-          veliTelefon: '',
-          veliYakinlik: 'Anne',
-          ikinciVeliAdSoyad: '',
-          ikinciVeliTelefon: '',
-          ikinciVeliYakinlik: 'Baba',
-          nfcUid: '',
+          adSoyad: "",
+          grup: gruplar.length > 0 ? gruplar[0].ad : "",
+          veliAdSoyad: "",
+          veliTelefon: "",
+          veliYakinlik: "Anne",
+          ikinciVeliAdSoyad: "",
+          ikinciVeliTelefon: "",
+          ikinciVeliYakinlik: "Baba",
+          nfcUid: "",
           aylikUcret: 5000,
           odemeGunu: 1,
         });
         ogrencileriGetir();
       }
     } catch (err) {
-      alert('Kayıt oluşturulurken hata oluştu.');
+      alert("Kayıt oluşturulurken hata oluştu.");
     }
   };
 
   const liste = ogrenciler || [];
-  const filtrelenmisOgrenciler = liste.filter((o) =>
-    o.adSoyad.toLowerCase().includes(aramaMetni.toLowerCase()) ||
-    o.veliAdSoyad.toLowerCase().includes(aramaMetni.toLowerCase()) ||
-    o.veliTelefon.includes(aramaMetni)
+  const filtrelenmisOgrenciler = liste.filter(
+    (o) =>
+      o.adSoyad.toLowerCase().includes(aramaMetni.toLowerCase()) ||
+      o.veliAdSoyad.toLowerCase().includes(aramaMetni.toLowerCase()) ||
+      o.veliTelefon.includes(aramaMetni),
   );
 
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto font-sans">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-black text-slate-950 tracking-tight">🎓 Öğrenci & Grup Yönetimi</h1>
+          <h1 className="text-3xl font-black text-slate-950 tracking-tight">
+            🎓 Öğrenci & Grup Yönetimi
+          </h1>
           <p className="text-slate-600 text-sm font-semibold mt-1">
-            Grup isimlerini belirleyebilir ve öğrencileri seçtiğiniz gruplara kolayca transfer edebilirsiniz.
+            Grup isimlerini belirleyebilir ve öğrencileri seçtiğiniz gruplara
+            kolayca transfer edebilirsiniz.
           </p>
         </div>
 
@@ -233,7 +249,9 @@ export default function OgrencilerPage() {
       {/* 🔍 ARAMA VE GRUP FİLTRELEME PANENİ */}
       <div className="bg-white p-5 rounded-3xl shadow-md border border-slate-300 mb-8 grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="md:col-span-2">
-          <label className="block text-xs font-black text-slate-700 uppercase mb-1">🔍 Öğrenci / Veli Ara</label>
+          <label className="block text-xs font-black text-slate-700 uppercase mb-1">
+            🔍 Öğrenci / Veli Ara
+          </label>
           <input
             type="text"
             placeholder="İsim veya telefon numarası yazın..."
@@ -244,7 +262,9 @@ export default function OgrencilerPage() {
         </div>
 
         <div>
-          <label className="block text-xs font-black text-slate-700 uppercase mb-1">🏷️ Gruba Göre Filtrele</label>
+          <label className="block text-xs font-black text-slate-700 uppercase mb-1">
+            🏷️ Gruba Göre Filtrele
+          </label>
           <select
             value={seciliGrupFiltre}
             onChange={(e) => setSeciliGrupFiltre(e.target.value)}
@@ -265,25 +285,36 @@ export default function OgrencilerPage() {
         <h2 className="text-xl font-black mb-5 text-slate-900 border-b border-slate-200 pb-3">
           ➕ Yeni Öğrenci & İlk Grup Kaydı
         </h2>
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <form
+          onSubmit={handleSubmit}
+          className="grid grid-cols-1 md:grid-cols-3 gap-5"
+        >
           <div className="md:col-span-2">
-            <label className="block text-xs font-black text-slate-900 uppercase mb-1">Öğrenci Ad Soyad *</label>
+            <label className="block text-xs font-black text-slate-900 uppercase mb-1">
+              Öğrenci Ad Soyad *
+            </label>
             <input
               type="text"
               required
               className="w-full border-2 border-slate-400 p-3 rounded-xl text-sm font-bold text-slate-950 bg-slate-50"
               placeholder="Örn: Zeynep Asel KAN"
               value={yeniOgrenci.adSoyad}
-              onChange={(e) => setYeniOgrenci({ ...yeniOgrenci, adSoyad: e.target.value })}
+              onChange={(e) =>
+                setYeniOgrenci({ ...yeniOgrenci, adSoyad: e.target.value })
+              }
             />
           </div>
 
           <div>
-            <label className="block text-xs font-black text-slate-900 uppercase mb-1">Başlangıç Grubu *</label>
+            <label className="block text-xs font-black text-slate-900 uppercase mb-1">
+              Başlangıç Grubu *
+            </label>
             <select
               className="w-full border-2 border-blue-600 p-3 rounded-xl text-sm font-black text-blue-900 bg-blue-50"
               value={yeniOgrenci.grup}
-              onChange={(e) => setYeniOgrenci({ ...yeniOgrenci, grup: e.target.value })}
+              onChange={(e) =>
+                setYeniOgrenci({ ...yeniOgrenci, grup: e.target.value })
+              }
             >
               {gruplar.map((g) => (
                 <option key={g._id} value={g.ad}>
@@ -294,34 +325,49 @@ export default function OgrencilerPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-800 mb-1">1. Veli Ad Soyad *</label>
+            <label className="block text-xs font-bold text-slate-800 mb-1">
+              1. Veli Ad Soyad *
+            </label>
             <input
               type="text"
               required
               className="w-full border-2 border-slate-400 p-2.5 rounded-xl text-sm font-bold text-slate-950"
               value={yeniOgrenci.veliAdSoyad}
-              onChange={(e) => setYeniOgrenci({ ...yeniOgrenci, veliAdSoyad: e.target.value })}
+              onChange={(e) =>
+                setYeniOgrenci({ ...yeniOgrenci, veliAdSoyad: e.target.value })
+              }
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-800 mb-1">1. Veli Telefon *</label>
+            <label className="block text-xs font-bold text-slate-800 mb-1">
+              1. Veli Telefon *
+            </label>
             <input
               type="text"
               required
               className="w-full border-2 border-slate-400 p-2.5 rounded-xl text-sm font-bold text-slate-950"
               value={yeniOgrenci.veliTelefon}
-              onChange={(e) => setYeniOgrenci({ ...yeniOgrenci, veliTelefon: e.target.value })}
+              onChange={(e) =>
+                setYeniOgrenci({ ...yeniOgrenci, veliTelefon: e.target.value })
+              }
             />
           </div>
 
           <div>
-            <label className="block text-xs font-black text-slate-900 uppercase mb-1">Aylık Ücret (₺)</label>
+            <label className="block text-xs font-black text-slate-900 uppercase mb-1">
+              Aylık Ücret (₺)
+            </label>
             <input
               type="number"
               className="w-full border-2 border-slate-400 p-2.5 rounded-xl text-sm font-bold text-slate-950"
               value={yeniOgrenci.aylikUcret}
-              onChange={(e) => setYeniOgrenci({ ...yeniOgrenci, aylikUcret: Number(e.target.value) })}
+              onChange={(e) =>
+                setYeniOgrenci({
+                  ...yeniOgrenci,
+                  aylikUcret: Number(e.target.value),
+                })
+              }
             />
           </div>
 
@@ -348,7 +394,9 @@ export default function OgrencilerPage() {
         {loading ? (
           <p className="text-slate-700 font-bold">Yükleniyor...</p>
         ) : filtrelenmisOgrenciler.length === 0 ? (
-          <p className="text-slate-700 font-bold py-4">Arama kriterinize uygun öğrenci bulunamadı.</p>
+          <p className="text-slate-700 font-bold py-4">
+            Arama kriterinize uygun öğrenci bulunamadı.
+          </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
@@ -363,7 +411,10 @@ export default function OgrencilerPage() {
               </thead>
               <tbody>
                 {filtrelenmisOgrenciler.map((o) => (
-                  <tr key={o._id} className="border-b border-slate-200 hover:bg-blue-50/50 text-slate-950 transition">
+                  <tr
+                    key={o._id}
+                    className="border-b border-slate-200 hover:bg-blue-50/50 text-slate-950 transition"
+                  >
                     <td className="p-4">
                       <button
                         onClick={() => ogrenciDetayGetir(o._id)}
@@ -374,21 +425,27 @@ export default function OgrencilerPage() {
                     </td>
                     <td className="p-4">
                       <span className="bg-indigo-100 text-indigo-900 font-black text-xs px-3 py-1.5 rounded-xl border border-indigo-200">
-                        🏆 {o.grup || 'Belirtilmedi'}
+                        🏆 {o.grup || "Belirtilmedi"}
                       </span>
                     </td>
                     <td className="p-4">
-                      <div className="font-extrabold text-slate-900">{o.veliAdSoyad}</div>
-                      <div className="text-xs font-bold text-slate-700 font-mono">{o.veliTelefon}</div>
+                      <div className="font-extrabold text-slate-900">
+                        {o.veliAdSoyad}
+                      </div>
+                      <div className="text-xs font-bold text-slate-700 font-mono">
+                        {o.veliTelefon}
+                      </div>
                     </td>
-                    <td className="p-4 font-black text-emerald-700 text-base">₺ {o.aylikUcret}</td>
+                    <td className="p-4 font-black text-emerald-700 text-base">
+                      ₺ {o.aylikUcret}
+                    </td>
                     <td className="p-4 text-right">
                       <div className="flex items-center justify-end gap-2">
                         {/* 🔄 KOLAY TRANSFER BUTONU */}
                         <button
                           onClick={() => {
                             setTransferOgrenci(o);
-                            setYeniHedefGrup(o.grup || (gruplar[0]?.ad || ''));
+                            setYeniHedefGrup(o.grup || gruplar[0]?.ad || "");
                           }}
                           className="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 font-bold py-1.5 px-3 rounded-lg text-xs transition"
                         >
@@ -416,8 +473,12 @@ export default function OgrencilerPage() {
           <div className="bg-white max-w-lg w-full rounded-3xl shadow-2xl overflow-hidden border border-slate-300">
             <div className="bg-indigo-950 text-white p-6 flex justify-between items-center">
               <div>
-                <h2 className="text-xl font-black text-emerald-400">⚙️ Kurs Grup İsimleri Yönetimi</h2>
-                <p className="text-xs font-semibold text-slate-300 mt-0.5">İstediğiniz grup isimlerini ekleyip çıkarın.</p>
+                <h2 className="text-xl font-black text-emerald-400">
+                  ⚙️ Kurs Grup İsimleri Yönetimi
+                </h2>
+                <p className="text-xs font-semibold text-slate-300 mt-0.5">
+                  İstediğiniz grup isimlerini ekleyip çıkarın.
+                </p>
               </div>
               <button
                 onClick={() => setGrupYonetimAcik(false)}
@@ -447,10 +508,17 @@ export default function OgrencilerPage() {
 
               {/* MEVCUT GRUPLAR LİSTESİ */}
               <div className="space-y-2 max-h-60 overflow-y-auto">
-                <span className="text-xs font-black text-slate-500 uppercase block mb-1">Mevcut Gruplar</span>
+                <span className="text-xs font-black text-slate-500 uppercase block mb-1">
+                  Mevcut Gruplar
+                </span>
                 {gruplar.map((g) => (
-                  <div key={g._id} className="flex justify-between items-center bg-slate-100 p-3 rounded-xl border border-slate-200">
-                    <span className="font-bold text-slate-900 text-sm">🏆 {g.ad}</span>
+                  <div
+                    key={g._id}
+                    className="flex justify-between items-center bg-slate-100 p-3 rounded-xl border border-slate-200"
+                  >
+                    <span className="font-bold text-slate-900 text-sm">
+                      🏆 {g.ad}
+                    </span>
                     <button
                       onClick={() => grupSil(g._id, g.ad)}
                       className="text-rose-600 hover:text-rose-800 font-bold text-xs"
@@ -482,13 +550,19 @@ export default function OgrencilerPage() {
               <span className="bg-slate-950 text-white text-[10px] font-black uppercase px-2.5 py-1 rounded-full">
                 Grup Transfer İşlemi
               </span>
-              <h2 className="text-xl font-black mt-2">{transferOgrenci.adSoyad}</h2>
+              <h2 className="text-xl font-black mt-2">
+                {transferOgrenci.adSoyad}
+              </h2>
             </div>
 
             <div className="p-6 space-y-4">
               <div>
-                <span className="text-xs font-bold text-slate-500 uppercase block">Mevcut Grubu</span>
-                <span className="text-sm font-black text-slate-900">🏆 {transferOgrenci.grup || 'Belirtilmedi'}</span>
+                <span className="text-xs font-bold text-slate-500 uppercase block">
+                  Mevcut Grubu
+                </span>
+                <span className="text-sm font-black text-slate-900">
+                  🏆 {transferOgrenci.grup || "Belirtilmedi"}
+                </span>
               </div>
 
               <div>
