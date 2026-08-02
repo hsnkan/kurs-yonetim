@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 
 export default function DuyurularPage() {
-  const [ogrenciler, setOgrenciler] = useState([]);
+  const [ogrenciler, setOgrenciler] = useState([]); // 🛡️ Boş dizi başlangıcı
   const [topluMesajMetni, setTopluMesajMetni] = useState("");
   const [seciliGrup, setSeciliGrup] = useState("TUMU");
 
@@ -16,9 +16,12 @@ export default function DuyurularPage() {
         cache: "no-store",
       });
       const result = await res.json();
-      if (result.success) setOgrenciler(result.data);
+      if (result.success) {
+        setOgrenciler(result.data || []); // 🛡️ KORUMA
+      }
     } catch (error) {
       console.error("Öğrenciler yüklenemedi:", error);
+      setOgrenciler([]);
     }
   };
 
@@ -32,6 +35,8 @@ export default function DuyurularPage() {
     );
   };
 
+  const liste = ogrenciler || []; // 🛡️ KORUMA
+
   const duyuruGonder = () => {
     if (!topluMesajMetni.trim()) {
       alert("Lütfen gönderilecek duyuru metnini yazın!");
@@ -40,8 +45,8 @@ export default function DuyurularPage() {
 
     const hedefOgrenciler =
       seciliGrup === "TUMU"
-        ? ogrenciler
-        : ogrenciler.filter((o) => o.grup === seciliGrup);
+        ? liste
+        : liste.filter((o) => o.grup === seciliGrup);
 
     if (
       confirm(
@@ -82,7 +87,7 @@ export default function DuyurularPage() {
             className="w-full border-2 border-slate-300 p-3 rounded-xl text-sm font-bold bg-slate-50 text-slate-900 outline-none focus:border-blue-600"
           >
             <option value="TUMU">
-              📢 Tüm Aktif Veliler (Toplam {ogrenciler.length} Öğrenci)
+              📢 Tüm Aktif Veliler (Toplam {liste.length} Öğrenci)
             </option>
             <option value="Başlangıç Grubu">Başlangıç Grubu Velileri</option>
             <option value="Orta Seviye Grubu">
@@ -103,7 +108,7 @@ export default function DuyurularPage() {
           </label>
           <textarea
             rows="5"
-            placeholder="Duyuru metninizi buraya yazın... (Örn: Sayın Velilerimiz, resmi tatil nedeniyle antrenman programımızda yapılan değişiklikler aşağıdadır...)"
+            placeholder="Duyuru metninizi buraya yazın..."
             value={topluMesajMetni}
             onChange={(e) => setTopluMesajMetni(e.target.value)}
             className="w-full border-2 border-slate-300 p-4 rounded-xl text-sm font-semibold text-slate-950 outline-none focus:border-blue-600 bg-slate-50"

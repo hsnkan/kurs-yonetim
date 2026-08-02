@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 
 export default function YoklamaRaporPage() {
   const [tarih, setTarih] = useState(new Date().toISOString().split("T")[0]);
-  const [yoklamalar, setYoklamalar] = useState([]);
+  const [yoklamalar, setYoklamalar] = useState([]); // Varsayılan boş dizi
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -18,10 +18,13 @@ export default function YoklamaRaporPage() {
       });
       const result = await res.json();
       if (result.success) {
-        setYoklamalar(result.data);
+        setYoklamalar(result.data || []); // 🛡️ KORUMA: Eğer data undefined gelirse boş dizi yap
+      } else {
+        setYoklamalar([]);
       }
     } catch (err) {
-      console.error("Yoklama getirilemedi:", error);
+      console.error("Yoklama getirilemedi:", err);
+      setYoklamalar([]);
     } finally {
       setLoading(false);
     }
@@ -30,6 +33,8 @@ export default function YoklamaRaporPage() {
   const yazdir = () => {
     window.print();
   };
+
+  const liste = yoklamalar || []; // 🛡️ KORUMA
 
   return (
     <div className="p-6 md:p-10 max-w-6xl mx-auto font-sans">
@@ -86,7 +91,7 @@ export default function YoklamaRaporPage() {
 
         {loading ? (
           <p className="text-slate-600 font-bold py-6">Yükleniyor...</p>
-        ) : yoklamalar.length === 0 ? (
+        ) : liste.length === 0 ? (
           <div className="py-12 text-center text-slate-500 font-bold border-2 border-dashed border-slate-200 rounded-2xl">
             Bu tarihe ait katılım kaydı bulunamadı.
           </div>
@@ -103,7 +108,7 @@ export default function YoklamaRaporPage() {
                 </tr>
               </thead>
               <tbody>
-                {yoklamalar.map((y, index) => (
+                {liste.map((y, index) => (
                   <tr
                     key={y._id}
                     className="border-b border-slate-200 text-xs text-slate-900"
@@ -115,16 +120,18 @@ export default function YoklamaRaporPage() {
                       {y.ogrenciId?.adSoyad || "Bilinmiyor"}
                     </td>
                     <td className="p-3 font-mono font-bold text-blue-800">
-                      {new Date(y.tarih).toLocaleTimeString("tr-TR", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                      {y.tarih
+                        ? new Date(y.tarih).toLocaleTimeString("tr-TR", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                        : "-"}
                     </td>
                     <td className="p-3">
                       <span className="font-bold">
-                        {y.ogrenciId?.veliAdSoyad}
+                        {y.ogrenciId?.veliAdSoyad || "-"}
                       </span>{" "}
-                      ({y.ogrenciId?.veliTelefon})
+                      ({y.ogrenciId?.veliTelefon || "-"})
                     </td>
                     <td className="p-3 text-right">
                       <span className="bg-emerald-100 text-emerald-900 px-2.5 py-1 rounded-full font-black text-[10px]">
@@ -140,7 +147,7 @@ export default function YoklamaRaporPage() {
               <span>
                 Toplam Katılan Öğrenci:{" "}
                 <strong className="text-slate-950 text-sm">
-                  {yoklamalar.length}
+                  {liste.length}
                 </strong>
               </span>
               <span>İmza / Antrenör: _____________________</span>
