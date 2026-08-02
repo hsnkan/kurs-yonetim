@@ -2,40 +2,29 @@ import { NextResponse } from "next/server";
 
 export async function POST(request) {
   try {
-    const { username, password } = await request.json();
+    const { yoneticiAdi, sifre } = await request.json();
 
-    const validUser = process.env.ADMIN_USER || "admin";
-    const validPass = process.env.ADMIN_PASS || "Balans2026!";
+    // 🔒 BELİRLENEN GİRİŞ BİLGİLERİ (Küçük/büyük harf duyarlılığı için trim yapılır)
+    const GECERLI_YONETICI = "admin";
+    const GECERLI_SIFRE = "Balans2026!";
 
-    if (username === validUser && password === validPass) {
-      const response = NextResponse.json({ success: true });
-
-      // Güvenli Oturum Çerezi (Cookie) Tanımla
-      response.cookies.set("balans_session", "authenticated", {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 7, // 7 gün geçerli
-        path: "/",
-      });
-
-      return response;
+    if (
+      yoneticiAdi &&
+      yoneticiAdi.trim().toLowerCase() === GECERLI_YONETICI.toLowerCase() &&
+      sifre &&
+      sifre.trim() === GECERLI_SIFRE
+    ) {
+      return NextResponse.json({ success: true });
+    } else {
+      return NextResponse.json(
+        { success: false, error: "Kullanıcı adı veya şifre hatalı!" },
+        { status: 401 },
+      );
     }
-
-    return NextResponse.json(
-      { success: false, error: "Kullanıcı adı veya şifre hatalı!" },
-      { status: 401 },
-    );
   } catch (error) {
     return NextResponse.json(
-      { success: false, error: "Sunucu hatası" },
+      { success: false, error: "Giriş işlemi sırasında hata oluştu." },
       { status: 500 },
     );
   }
-}
-
-export async function DELETE() {
-  const response = NextResponse.json({ success: true });
-  response.cookies.delete("balans_session");
-  return response;
 }
