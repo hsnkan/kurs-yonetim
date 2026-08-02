@@ -1,6 +1,5 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const [yoneticiAdi, setYoneticiAdi] = useState("");
@@ -8,7 +7,6 @@ export default function LoginPage() {
   const [sifreGoster, setSifreGoster] = useState(false);
   const [hata, setHata] = useState("");
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -25,14 +23,14 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (data.success) {
-        router.push("/ogrenciler");
-        router.refresh();
+        // 🚀 Doğrudan yönlendirme (Takılmayı önler)
+        window.location.href = "/ogrenciler";
       } else {
-        setHata(data.error || "Hatalı yönetici adı veya şifre girdiniz!");
+        setHata(data.error || "Hatalı kullanıcı adı veya şifre!");
+        setLoading(false);
       }
     } catch (err) {
-      setHata("Giriş yapılırken bir hata oluştu.");
-    } finally {
+      setHata("Sunucu bağlantı hatası oluştu.");
       setLoading(false);
     }
   };
@@ -42,23 +40,22 @@ export default function LoginPage() {
       <div className="bg-white max-w-md w-full p-8 rounded-3xl shadow-2xl border border-slate-800">
         {/* LOGO & BAŞLIK */}
         <div className="text-center mb-8 flex flex-col items-center">
-          <div className="w-32 h-32 mb-4 drop-shadow-md flex items-center justify-center">
+          <div className="w-28 h-28 mb-4 drop-shadow-md flex items-center justify-center">
             <img
               src="/logo.png"
               alt="Balans Cimnastik Akademi Logo"
               className="w-full h-full rounded-full object-cover border-2 border-slate-200"
               onError={(e) => {
-                // Görsel bulunamazsa yedek şık bir amblem göster
                 e.currentTarget.onerror = null;
                 e.currentTarget.src =
                   "https://ui-avatars.com/api/?name=Balans+Cimnastik&background=0F172A&color=F59E0B&size=128";
               }}
             />
           </div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase">
+          <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">
             Balans Cimnastik Akademi
           </h1>
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">
+          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mt-1">
             Yönetim Paneli Girişi
           </p>
         </div>
@@ -79,10 +76,10 @@ export default function LoginPage() {
             <input
               type="text"
               required
-              placeholder="Örn: admin"
+              placeholder="admin"
               value={yoneticiAdi}
               onChange={(e) => setYoneticiAdi(e.target.value)}
-              className="w-full border-2 border-slate-400 p-3.5 rounded-2xl text-sm font-bold text-slate-950 outline-none focus:border-blue-600 bg-slate-50 transition placeholder:text-slate-400"
+              className="w-full border-2 border-slate-400 p-3.5 rounded-2xl text-sm font-bold text-slate-950 outline-none focus:border-blue-600 bg-slate-50 transition"
             />
           </div>
 
@@ -95,10 +92,10 @@ export default function LoginPage() {
               <input
                 type={sifreGoster ? "text" : "password"}
                 required
-                placeholder="Şifrenizi giriniz..."
+                placeholder="Balans2026!"
                 value={sifre}
                 onChange={(e) => setSifre(e.target.value)}
-                className="w-full border-2 border-slate-400 p-3.5 pr-12 rounded-2xl text-sm font-bold text-slate-950 outline-none focus:border-blue-600 bg-slate-50 transition placeholder:text-slate-400"
+                className="w-full border-2 border-slate-400 p-3.5 pr-12 rounded-2xl text-sm font-bold text-slate-950 outline-none focus:border-blue-600 bg-slate-50 transition"
               />
               <button
                 type="button"
