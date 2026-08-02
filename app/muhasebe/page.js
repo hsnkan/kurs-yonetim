@@ -1,132 +1,152 @@
 "use client";
 import { useState, useEffect } from "react";
 
-export default function MuhasebePage() {
-  const [data, setData] = useState({
-    odemesiBekleyenler: [],
-    buAyToplamGelir: 0,
-  });
+export default function MaliYonetimPage() {
+  const [seciliYil, setSeciliYil] = useState(new Date().getFullYear());
+  const [rapor, setRapor] = useState([]); // Varsayılan boş dizi
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    muhasebeVerileriniGetir();
-  }, []);
+    maliRaporuGetir();
+  }, [seciliYil]);
 
-  const muhasebeVerileriniGetir = async () => {
+  const maliRaporuGetir = async () => {
+    setLoading(true);
     try {
-      const res = await fetch("/api/muhasebe", { cache: "no-store" });
+      const res = await fetch(`/api/muhasebe?yil=${seciliYil}`, {
+        cache: "no-store",
+      });
       const result = await res.json();
-      if (result.success) {
-        setData(result.data);
+      if (result && result.success && Array.isArray(result.data)) {
+        setRapor(result.data);
+      } else {
+        setRapor([]);
       }
     } catch (err) {
-      console.error("Muhasebe verileri alınamadı:", err);
+      console.error("Mali rapor getirilemedi:", err);
+      setRapor([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const odemeAl = async (ogrenciId, tutar) => {
-    if (!confirm("Ödeme alındı olarak işaretlemek istiyor musunuz?")) return;
+  // 🛡️ GÜVENLİ HESAPLAMA KORUMALARI (Array garantisi)
+  const guvenliRapor = Array.isArray(rapor) ? rapor : [];
 
-    try {
-      const res = await fetch("/api/muhasebe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ogrenciId, tutar, islemTipi: "ODEME_AL" }),
-      });
-      const result = await res.json();
-      if (result.success) {
-        alert(result.message);
-        muhasebeVerileriniGetir();
-      } else {
-        alert("Hata: " + result.error);
-      }
-    } catch (err) {
-      alert("İşlem sırasında hata oluştu.");
-    }
-  };
+  const toplamYillikKazanc = guvenliRapor.reduce(
+    (acc, item) => acc + (item?.toplamKazanc || 0),
+    0,
+  );
+  const toplamYeniKayit = guvenliRapor.reduce(
+    (acc, item) => acc + (item?.yeniKayit || 0),
+    0,
+  );
+  const toplamAyrilan = guvenliRapor.reduce(
+    (acc, item) => acc + (item?.ayrilan || 0),
+    0,
+  );
 
   return (
-    <div className="p-8 max-w-7xl mx-auto font-sans">
-      <div className="mb-8">
-        <h1 className="text-3xl font-extrabold text-slate-800">
-          🔒 Finans & Kasa Yönetimi (Yönetici)
-        </h1>
-        <p className="text-slate-500 text-sm mt-1">
-          Aylık ciro takibi ve ödeme tahsilat onayları.
-        </p>
-      </div>
-
-      {/* İSTATİSTİK KARTLARI */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-            Bu Ay Tahsil Edilen Toplam Gelir
-          </p>
-          <p className="text-3xl font-extrabold text-emerald-600 mt-2">
-            ₺ {data.buAyToplamGelir}
+    <div className="p-6 md:p-10 max-w-7xl mx-auto font-sans">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-3xl font-black text-slate-950 tracking-tight">
+            💰 Mali Yönetim & Gelir Takibi
+          </h1>
+          <p className="text-slate-600 text-sm font-semibold mt-1">
+            Yıllara ait aylık kayıtlar, ayrılışlar ve ciro/kazanç analizleri.
           </p>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-            Ödemesi Bekleyen Öğrenci
-          </p>
-          <p className="text-3xl font-extrabold text-amber-600 mt-2">
-            {data.odemesiBekleyenler.length} Kişi
-          </p>
+        {/* YIL SEÇİMİ */}
+        <div className="bg-white p-3 rounded-2xl border border-slate-300 shadow-sm flex items-center gap-3">
+          <span className="text-xs font-black text-slate-700">
+            📅 Çalışma Yılı:
+          </span>
+          <select
+            value={seciliYil}
+            onChange={(e) => setSeciliYil(Number(e.target.value))}
+            className="font-black text-sm text-blue-900 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-xl outline-none"
+          >
+            <option value={2026}>2026 Yılı</option>
+            <option value={2025}>2025 Yılı</option>
+            <option value={2024}>2024 Yılı</option>
+          </select>
         </div>
       </div>
 
-      {/* ÖDEME ONAY TABLOSU */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-        <h2 className="text-xl font-bold mb-4 text-slate-800">
-          ⏳ Tahsil Edilecek Aidatlar
+      {/* YILLIK ÖZET KARTLARI */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="bg-emerald-950 text-white p-6 rounded-3xl border border-emerald-800 shadow-lg">
+          <span className="text-xs font-black text-emerald-300 uppercase tracking-wider block mb-1">
+            {seciliYil} Toplam Gelir Kazancı
+          </span>
+          <span className="text-3xl font-black text-emerald-400">
+            ₺ {toplamYillikKazanc.toLocaleString("tr-TR")}
+          </span>
+        </div>
+
+        <div className="bg-blue-950 text-white p-6 rounded-3xl border border-blue-800 shadow-lg">
+          <span className="text-xs font-black text-blue-300 uppercase tracking-wider block mb-1">
+            Yıllık Toplam Yeni Kayıt
+          </span>
+          <span className="text-3xl font-black text-blue-400">
+            +{toplamYeniKayit} Öğrenci
+          </span>
+        </div>
+
+        <div className="bg-rose-950 text-white p-6 rounded-3xl border border-rose-800 shadow-lg">
+          <span className="text-xs font-black text-rose-300 uppercase tracking-wider block mb-1">
+            Yıllık Toplam Ayrılan
+          </span>
+          <span className="text-3xl font-black text-rose-400">
+            -{toplamAyrilan} Öğrenci
+          </span>
+        </div>
+      </div>
+
+      {/* AYLIK DETAY TABLOSU */}
+      <div className="bg-white p-6 md:p-8 rounded-3xl shadow-lg border border-slate-300">
+        <h2 className="text-xl font-black mb-5 text-slate-900 border-b border-slate-200 pb-3">
+          📊 {seciliYil} Yılı Aylık Döküm ve Kazanç Tablosu
         </h2>
 
         {loading ? (
-          <p>Yükleniyor...</p>
-        ) : data.odemesiBekleyenler.length === 0 ? (
-          <div className="p-8 text-center text-emerald-600 font-semibold bg-emerald-50 rounded-xl">
-            🎉 Tüm aidatlar tahsil edildi!
-          </div>
+          <p className="text-slate-700 font-bold py-4">
+            Raporlar hesaplanıyor...
+          </p>
+        ) : guvenliRapor.length === 0 ? (
+          <p className="text-slate-500 font-bold py-4">
+            Gösterilebilecek rapor verisi bulunamadı.
+          </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b bg-slate-50 text-slate-600 text-sm">
-                  <th className="p-3">Öğrenci Adı</th>
-                  <th className="p-3">Veli Adı & Tel</th>
-                  <th className="p-3">Aylık Ücret</th>
-                  <th className="p-3">Ödeme Günü</th>
-                  <th className="p-3 text-right">Tahsilat</th>
+                <tr className="border-b-2 border-slate-300 bg-slate-100 text-slate-900 text-xs font-black uppercase tracking-wider">
+                  <th className="p-4">Ay</th>
+                  <th className="p-4">Yeni Kayıt</th>
+                  <th className="p-4">Ayrılan (Pasif)</th>
+                  <th className="p-4 text-right">Tahmini Aylık Gelir</th>
                 </tr>
               </thead>
               <tbody>
-                {data.odemesiBekleyenler.map((o) => (
+                {guvenliRapor.map((item, idx) => (
                   <tr
-                    key={o._id}
-                    className="border-b hover:bg-slate-50 text-sm text-slate-800"
+                    key={idx}
+                    className="border-b border-slate-200 hover:bg-slate-50 text-slate-950 transition"
                   >
-                    <td className="p-3 font-semibold">{o.adSoyad}</td>
-                    <td className="p-3">
-                      <div>{o.veliAdSoyad}</div>
-                      <div className="text-xs text-slate-500">
-                        {o.veliTelefon}
-                      </div>
+                    <td className="p-4 font-black text-base">
+                      {item?.ay || "-"}
                     </td>
-                    <td className="p-3 font-bold text-slate-900">
-                      ₺ {o.aylikUcret}
+                    <td className="p-4 font-bold text-blue-700">
+                      +{item?.yeniKayit || 0} Öğrenci
                     </td>
-                    <td className="p-3">Her ayın {o.odemeGunu}. günü</td>
-                    <td className="p-3 text-right">
-                      <button
-                        onClick={() => odemeAl(o._id, o.aylikUcret)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1.5 px-4 rounded-lg text-xs transition"
-                      >
-                        ✓ Ödeme Alındı
-                      </button>
+                    <td className="p-4 font-bold text-rose-600">
+                      -{item?.ayrilan || 0} Öğrenci
+                    </td>
+                    <td className="p-4 text-right font-black text-emerald-700 text-base">
+                      ₺ {(item?.toplamKazanc || 0).toLocaleString("tr-TR")}
                     </td>
                   </tr>
                 ))}
