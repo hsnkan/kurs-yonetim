@@ -3,26 +3,30 @@ import { NextResponse } from "next/server";
 export async function POST(request) {
   try {
     const body = await request.json();
-    const yoneticiAdi = (body.yoneticiAdi || "")
+
+    // Kullanıcının formdan girdiği veriler
+    const girilenAd = (body.yoneticiAdi || "").toString().trim().toLowerCase();
+    const girilenSifre = (body.sifre || "").toString().trim();
+
+    // 🔒 Vercel / .env Üzerinden Gelen Yeni Değişkenleriniz
+    const HEDEF_KULLANICI = (process.env.ADMIN_USER || "Balans")
       .toString()
       .trim()
       .toLowerCase();
-    const sifre = (body.sifre || "").toString().trim();
+    const HEDEF_SIFRE = (process.env.ADMIN_PASS || "B2026cimnastik!")
+      .toString()
+      .trim();
 
-    // 🔒 GEÇERLİ GİRİŞ BİLGİLERİ (Büyük/Küçük Harf Esnekliği Eklendi)
-    const HEDEF_KULLANICI = "admin";
-    const HEDEF_SIFRE = "Balans2026!";
-
-    if (yoneticiAdi === HEDEF_KULLANICI && sifre === HEDEF_SIFRE) {
+    if (girilenAd === HEDEF_KULLANICI && girilenSifre === HEDEF_SIFRE) {
       const response = NextResponse.json({
         success: true,
         message: "Giriş Başarılı",
       });
 
-      // Tarayıcı kısıtlamalarına takılmaması için çerez tanımı
+      // Oturum çerezini tanımlıyoruz
       response.cookies.set("admin_session", "true", {
         path: "/",
-        maxAge: 86400,
+        maxAge: 86400, // 24 Saat
         sameSite: "lax",
       });
 
@@ -30,12 +34,12 @@ export async function POST(request) {
     }
 
     return NextResponse.json(
-      { success: false, error: "Kullanıcı adı veya şifre hatalı!" },
+      { success: false, error: "Yönetici adı veya şifre hatalı!" },
       { status: 401 },
     );
   } catch (error) {
     return NextResponse.json(
-      { success: false, error: "Giriş işlemi esnasında hata oluştu." },
+      { success: false, error: "Giriş işlemi esnasında sunucu hatası." },
       { status: 500 },
     );
   }
