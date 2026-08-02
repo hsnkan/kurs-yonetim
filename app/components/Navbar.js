@@ -6,7 +6,6 @@ export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Giriş sayfasında Navbar'ı gizle
   if (pathname === "/login") return null;
 
   const handleLogout = async () => {
@@ -17,68 +16,63 @@ export default function Navbar() {
     }
   };
 
+  const menuElemanlari = [
+    { ad: "Öğrenci Yönetimi", ikon: "🎓", href: "/ogrenciler" },
+    { ad: "Duyuru Paneli", ikon: "📢", href: "/duyurular" },
+    { ad: "Mali Yönetim", ikon: "💰", href: "/muhasebe" },
+    { ad: "NFC Yoklama", ikon: "📲", href: "/yoklama/nfc" },
+    { ad: "Günlük Yoklama", ikon: "📋", href: "/yoklama" },
+  ];
+
   return (
-    <nav className="bg-slate-900 border-b border-slate-800 text-white sticky top-0 z-50 font-sans shadow-lg">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          <div className="flex items-center gap-3">
-            <span className="text-xl">🤸‍♀️</span>
-            <span className="font-black text-lg tracking-tight text-emerald-400">
+    <aside className="w-full md:w-64 bg-slate-900 border-r border-slate-800 text-white flex flex-col justify-between md:fixed md:inset-y-0 z-50 font-sans shadow-xl">
+      {/* ÜST BÖLÜM: LOGO & MENÜ LİNKLERİ */}
+      <div className="p-5">
+        {/* LOGO & BAŞLIK */}
+        <div className="flex items-center gap-3 pb-6 mb-6 border-b border-slate-800">
+          <span className="text-3xl">🤸‍♀️</span>
+          <div>
+            <h1 className="font-black text-base tracking-tight text-emerald-400">
               Balans Cimnastik
+            </h1>
+            <span className="text-[10px] font-bold text-slate-400 tracking-wider uppercase block">
+              Yönetim Paneli
             </span>
           </div>
-
-          <div className="hidden md:flex items-center space-x-2">
-            <Link
-              href="/"
-              className={`px-3 py-2 rounded-xl text-xs font-bold transition ${
-                pathname === "/"
-                  ? "bg-blue-600 text-white"
-                  : "text-slate-300 hover:bg-slate-800"
-              }`}
-            >
-              🏠 Ana Sayfa
-            </Link>
-            <Link
-              href="/ogrenciler"
-              className={`px-3 py-2 rounded-xl text-xs font-bold transition ${
-                pathname === "/ogrenciler"
-                  ? "bg-blue-600 text-white"
-                  : "text-slate-300 hover:bg-slate-800"
-              }`}
-            >
-              🎓 Aktif Öğrenciler
-            </Link>
-            <Link
-              href="/ogrenciler/arsiv"
-              className={`px-3 py-2 rounded-xl text-xs font-bold transition ${
-                pathname === "/ogrenciler/arsiv"
-                  ? "bg-blue-600 text-white"
-                  : "text-slate-300 hover:bg-slate-800"
-              }`}
-            >
-              📁 Arşiv & Geçmiş
-            </Link>
-            <Link
-              href="/yoklama/nfc"
-              className={`px-3 py-2 rounded-xl text-xs font-bold transition ${
-                pathname === "/yoklama/nfc"
-                  ? "bg-emerald-600 text-white"
-                  : "text-slate-300 hover:bg-slate-800"
-              }`}
-            >
-              📲 NFC Yoklama
-            </Link>
-          </div>
-
-          <button
-            onClick={handleLogout}
-            className="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-xl text-xs font-black transition shadow-sm flex items-center gap-1"
-          >
-            🚪 Güvenli Çıkış
-          </button>
         </div>
+
+        {/* MENÜ LİNKLERİ */}
+        <nav className="space-y-2">
+          {menuElemanlari.map((item) => {
+            const aktifMi = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition-all ${
+                  aktifMi
+                    ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30 translate-x-1"
+                    : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                }`}
+              >
+                <span className="text-base">{item.ikon}</span>
+                <span>{item.ad}</span>
+              </Link>
+            );
+          })}
+        </nav>
       </div>
-    </nav>
+
+      {/* ALT BÖLÜM: EN ALTTA SABİTLENMİŞ ÇIKIŞ BUTONU */}
+      <div className="p-5 border-t border-slate-800">
+        <button
+          onClick={handleLogout}
+          className="w-full bg-rose-600/10 hover:bg-rose-600 border border-rose-600/40 hover:border-rose-600 text-rose-300 hover:text-white py-3 px-4 rounded-2xl text-xs font-black transition flex items-center justify-center gap-2 group"
+        >
+          <span className="group-hover:scale-110 transition-transform">🚪</span>
+          <span>Güvenli Çıkış Yap</span>
+        </button>
+      </div>
+    </aside>
   );
 }

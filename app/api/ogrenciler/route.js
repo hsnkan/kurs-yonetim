@@ -2,70 +2,54 @@ import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import Ogrenci from "@/models/Ogrenci";
 
-// GET: Tüm öğrencileri (veya duruma göre süzerek) getirir
-export async function GET(req) {
+export async function GET(request) {
   try {
     await dbConnect();
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = new URL(request.url);
     const durum = searchParams.get("durum") || "AKTIF";
+    const grup = searchParams.get("grup");
 
-    const ogrenciler = await Ogrenci.find({ durum }).sort({ createdAt: -1 });
+    const filtre = { durum };
+    if (grup && grup !== "TUMU") {
+      filtre.grup = grup;
+    }
+
+    const ogrenciler = await Ogrenci.find(filtre).sort({ adSoyad: 1 });
     return NextResponse.json({ success: true, data: ogrenciler });
   } catch (error) {
     return NextResponse.json(
-      { success: false, error: "Öğrenciler getirilemedi: " + error.message },
+      { success: false, error: error.message },
       { status: 500 },
     );
   }
 }
 
-// POST: Yeni Öğrenci Ekle
-export async function POST(req) {
+export async function POST(request) {
   try {
     await dbConnect();
-    const body = await req.json();
-
+    const body = await request.json();
     const yeniOgrenci = await Ogrenci.create(body);
-    return NextResponse.json(
-      { success: true, data: yeniOgrenci },
-      { status: 201 },
-    );
+    return NextResponse.json({ success: true, data: yeniOgrenci });
   } catch (error) {
     return NextResponse.json(
-      { success: false, error: "Öğrenci eklenemedi: " + error.message },
+      { success: false, error: error.message },
       { status: 400 },
     );
   }
 }
 
-// PUT: Öğrenci Durumunu Güncelle (Arşivle / Aktif Et)
-export async function PUT(req) {
+export async function PUT(request) {
   try {
     await dbConnect();
-    const { id, durum } = await req.json();
-
-    const guncelOgrenci = await Ogrenci.findByIdAndUpdate(
-      id,
-      { durum },
-      { new: true },
-    );
-
-    if (!guncelOgrenci) {
-      return NextResponse.json(
-        { success: false, error: "Öğrenci bulunamadı." },
-        { status: 404 },
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: `Öğrenci durumu '${durum}' olarak güncellendi.`,
-      data: guncelOgrenci,
+    const { id, ...guncelVeri } = await request.json();
+    const ogrenci = await Ogrenci.findByIdAndUpdate(id, guncelVeri, {
+      new: true,
     });
+    return NextResponse.json({ success: true, data: ogrenci });
   } catch (error) {
     return NextResponse.json(
-      { success: false, error: "Güncelleme başarısız: " + error.message },
-      { status: 500 },
+      { success: false, error: error.message },
+      { status: 400 },
     );
   }
 }
