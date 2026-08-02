@@ -6,6 +6,8 @@ export default function MaliYonetimPage() {
   const [aylikVeriler, setAylikVeriler] = useState([]);
   const [loading, setLoading] = useState(true);
   const [seciliAy, setSeciliAy] = useState(null);
+  const [excelModalAcik, setExcelModalAcik] = useState(false);
+  const [excelMetni, setExcelMetni] = useState("");
 
   // Form Düzenleme State'i
   const [formVerisi, setFormVerisi] = useState({
@@ -79,9 +81,66 @@ export default function MaliYonetimPage() {
     }
   };
 
+  // 📊 EXCEL / CSV VERİSİNİ AYRIŞTIRMA VE YÜKLEME
+  const excelYukle = async () => {
+    if (!excelMetni.trim()) {
+      alert("Lütfen Excel verilerini yapıştırın!");
+      return;
+    }
+
+    try {
+      // Satırları ve sütunları böl (Tab veya Virgül ayrıştırıcı)
+      const satirDizisi = excelMetni.trim().split("\n");
+      const islenmisVeriler = [];
+
+      satirDizisi.forEach((satir, idx) => {
+        const sutunlar = satir.split(/[\t;,]+/); // Tab, noktalı virgül veya virgül
+        if (sutunlar.length >= 2) {
+          const aySira = parseInt(sutunlar[0].trim());
+          const kazanc = parseFloat(sutunlar[1]?.trim() || 0);
+          const katilan = parseInt(sutunlar[2]?.trim() || 0);
+          const ayrilan = parseInt(sutunlar[3]?.trim() || 0);
+          const donduran = parseInt(sutunlar[4]?.trim() || 0);
+
+          if (!isNaN(aySira) && aySira >= 1 && aySira <= 12) {
+            islenmisVeriler.push({
+              aySira,
+              kazanc: isNaN(kazanc) ? 0 : kazanc,
+              katilanOgrenci: isNaN(katilan) ? 0 : katilan,
+              ayrilanOgrenci: isNaN(ayrilan) ? 0 : ayrilan,
+              donduranOgrenci: isNaN(donduran) ? 0 : donduran,
+            });
+          }
+        }
+      });
+
+      if (islenmisVeriler.length === 0) {
+        alert("Uygun formatta veri okunamadı. Lütfen örneği kontrol edin.");
+        return;
+      }
+
+      const res = await fetch("/api/muhasebe/excel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ yil: seciliYil, veriler: islenmisVeriler }),
+      });
+
+      const result = await res.json();
+      if (result.success) {
+        alert(
+          `${islenmisVeriler.length} aylık Excel verisi ${seciliYil} yılına başarıyla işlendi! 🎉`,
+        );
+        setExcelModalAcik(false);
+        setExcelMetni("");
+        aylikVerileriGetir();
+      }
+    } catch (err) {
+      alert("Excel yüklenirken hata oluştu.");
+    }
+  };
+
   const guvenliListe = Array.isArray(aylikVeriler) ? aylikVeriler : [];
 
-  // Yıllık Toplam Gerçekleşen Hesaplamalar
   const toplamYillikKazanc = guvenliListe.reduce(
     (acc, item) => acc + (item?.kazanc || 0),
     0,
@@ -101,32 +160,40 @@ export default function MaliYonetimPage() {
 
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto font-sans">
-      {/* ÜST BAŞLIK VE YIL SEÇİMİ */}
+      {/* ÜST BAŞLIK, YIL VE EXCEL BUTONU */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-black text-slate-950 tracking-tight">
-            💰 Gerçekleşen Mali Yönetim & Aylık Kayıtlar
+            💰 Gerçekleşen Mali Yönetim & Excel Yükleme
           </h1>
           <p className="text-slate-600 text-sm font-semibold mt-1">
-            Her ayın gerçekleşen kazanç, katılım, ayrılış ve dondurma verilerini
-            işleyin ve inceleyin.
+            Aylık kazanç, katılan, ayrılan ve donduran öğrenci verilerini
+            otomatik takip edin veya Excel'den aktarın.
           </p>
         </div>
 
-        {/* 📅 YILLAR SEÇİMİ */}
-        <div className="bg-white p-3 rounded-2xl border border-slate-300 shadow-sm flex items-center gap-3">
-          <span className="text-xs font-black text-slate-700">
-            📅 Çalışma Yılı:
-          </span>
-          <select
-            value={seciliYil}
-            onChange={(e) => setSeciliYil(Number(e.target.value))}
-            className="font-black text-sm text-blue-900 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-xl outline-none cursor-pointer"
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setExcelModalAcik(true)}
+            className="bg-emerald-700 hover:bg-emerald-800 text-white font-black px-4 py-2.5 rounded-2xl text-xs shadow-md transition flex items-center gap-1.5"
           >
-            <option value={2026}>2026 Yılı</option>
-            <option value={2025}>2025 Yılı</option>
-            <option value={2024}>2024 Yılı</option>
-          </select>
+            <span>📊</span> Excel'den Veri Aktar
+          </button>
+
+          <div className="bg-white p-2 rounded-2xl border border-slate-300 shadow-sm flex items-center gap-2">
+            <span className="text-xs font-black text-slate-700 pl-1">
+              📅 Yıl:
+            </span>
+            <select
+              value={seciliYil}
+              onChange={(e) => setSeciliYil(Number(e.target.value))}
+              className="font-black text-xs text-blue-900 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-xl outline-none"
+            >
+              <option value={2026}>2026 Yılı</option>
+              <option value={2025}>2025 Yılı</option>
+              <option value={2024}>2024 Yılı</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -174,7 +241,7 @@ export default function MaliYonetimPage() {
         <h2 className="text-xl font-black mb-6 text-slate-900 border-b border-slate-200 pb-3 flex justify-between items-center">
           <span>📊 {seciliYil} Yılı Aylık Kayıt Tablosu</span>
           <span className="text-xs text-slate-500 font-bold">
-            Veri işlemek/düzenlemek için ilgili aya tıklayın
+            Aylara tıklayarak detayları düzenleyebilirsiniz
           </span>
         </h2>
 
@@ -195,7 +262,7 @@ export default function MaliYonetimPage() {
                     {item.ay}
                   </span>
                   <span className="text-xs font-bold text-blue-700 bg-blue-100 px-2.5 py-1 rounded-full group-hover:bg-blue-600 group-hover:text-white transition">
-                    ✏️ İşle / Düzenle
+                    ✏️ Düzenle
                   </span>
                 </div>
 
@@ -231,10 +298,78 @@ export default function MaliYonetimPage() {
         )}
       </div>
 
-      {/* ✏️ AYLIK VERİ İŞLEME / DÜZENLEME MODALI */}
+      {/* 📊 EXCEL VERİ YÜKLEME MODALI */}
+      {excelModalAcik && (
+        <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white max-w-xl w-full rounded-3xl shadow-2xl overflow-hidden border-2 border-slate-300">
+            <div className="bg-emerald-950 text-white p-6 flex justify-between items-center">
+              <div>
+                <span className="bg-emerald-700 text-white text-[10px] font-black uppercase px-2.5 py-1 rounded-full">
+                  Excel Toplu Veri Aktarımı
+                </span>
+                <h2 className="text-2xl font-black mt-1 text-emerald-400">
+                  {seciliYil} Yılı Veri Yükleme
+                </h2>
+              </div>
+              <button
+                onClick={() => setExcelModalAcik(false)}
+                className="bg-emerald-900 hover:bg-emerald-800 text-white w-9 h-9 rounded-full font-black text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="bg-emerald-50 border border-emerald-300 p-4 rounded-2xl text-xs text-emerald-950 space-y-2 font-semibold">
+                <p className="font-black text-sm">📌 Excel Formatı Şablonu:</p>
+                <p>
+                  Excel tablonuzdan kopyalayıp aşağıdaki kutuya yapıştırın.
+                  Format şu şekilde olmalıdır:
+                </p>
+                <div className="bg-white p-2.5 rounded-xl border border-emerald-300 font-mono text-[11px] text-slate-800">
+                  Ay_Sıra Kazanç Katılan Ayrılan Donduran
+                  <br />
+                  1 50000 10 2 1 (Ocak)
+                  <br />2 65000 12 1 0 (Şubat)
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-black text-slate-900 uppercase mb-1.5">
+                  📋 Excel Verilerini Kopyalayıp Yapıştırın
+                </label>
+                <textarea
+                  rows="7"
+                  placeholder="Excel hücrelerini buraya yapıştırın..."
+                  value={excelMetni}
+                  onChange={(e) => setExcelMetni(e.target.value)}
+                  className="w-full border-2 border-slate-400 p-3 rounded-2xl text-xs font-mono text-slate-950 outline-none focus:border-emerald-600 bg-slate-50"
+                ></textarea>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-3 border-t border-slate-200">
+                <button
+                  onClick={() => setExcelModalAcik(false)}
+                  className="bg-slate-200 text-slate-800 font-bold px-4 py-2.5 rounded-xl text-xs"
+                >
+                  İptal
+                </button>
+                <button
+                  onClick={excelYukle}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-6 py-2.5 rounded-xl text-xs shadow-md transition"
+                >
+                  🚀 Verileri İşle ve Kaydet
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✏️ AYLIK VERİ DÜZENLEME MODALI */}
       {seciliAy && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white max-w-md w-full rounded-3xl shadow-2xl overflow-hidden border border-slate-300">
+        <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white max-w-md w-full rounded-3xl shadow-2xl overflow-hidden border-2 border-slate-300">
             <div className="bg-slate-900 text-white p-6 flex justify-between items-center">
               <div>
                 <span className="bg-blue-600 text-white text-[10px] font-black uppercase px-2.5 py-1 rounded-full">
@@ -246,7 +381,7 @@ export default function MaliYonetimPage() {
               </div>
               <button
                 onClick={() => setSeciliAy(null)}
-                className="bg-slate-800 hover:bg-slate-700 text-white w-9 h-9 rounded-full font-black"
+                className="bg-slate-800 hover:bg-slate-700 text-white w-9 h-9 rounded-full font-black text-sm"
               >
                 ✕
               </button>
@@ -330,7 +465,7 @@ export default function MaliYonetimPage() {
                 </label>
                 <textarea
                   rows="2"
-                  placeholder="Örn: Bu ay yarışma katılım ücretleri de dahil edildi."
+                  placeholder="Açıklama veya not ekleyin..."
                   className="w-full border-2 border-slate-300 p-2.5 rounded-xl text-xs font-semibold text-slate-900 outline-none"
                   value={formVerisi.notlar}
                   onChange={(e) =>
@@ -351,7 +486,7 @@ export default function MaliYonetimPage() {
                   type="submit"
                   className="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-6 py-2.5 rounded-xl text-xs shadow-md transition"
                 >
-                  💾 Aylık Veriyi Kaydet
+                  💾 Veriyi Kaydet
                 </button>
               </div>
             </form>

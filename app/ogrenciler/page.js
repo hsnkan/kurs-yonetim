@@ -8,15 +8,15 @@ export default function OgrencilerPage() {
   const [aramaMetni, setAramaMetni] = useState("");
   const [seciliGrupFiltre, setSeciliGrupFiltre] = useState("TUMU");
 
-  // Transfer ve Grup Yönetimi Modal Durumları
+  // Modal Durumları
+  const [seciliOgrenci, setSeciliOgrenci] = useState(null);
   const [transferOgrenci, setTransferOgrenci] = useState(null);
   const [yeniHedefGrup, setYeniHedefGrup] = useState("");
   const [grupYonetimAcik, setGrupYonetimAcik] = useState(false);
   const [yeniEklenecekGrupAd, setYeniEklenecekGrupAd] = useState("");
+  const [whatsappGrupLinki, setWhatsappGrupLinki] = useState("");
 
-  const [seciliOgrenciDetay, setSeciliOgrenciDetay] = useState(null);
-  const [detayLoading, setDetayLoading] = useState(false);
-
+  // ➕ ÖĞRENCİ KAYIT FORMU STATE'İ
   const [yeniOgrenci, setYeniOgrenci] = useState({
     adSoyad: "",
     grup: "",
@@ -71,6 +71,30 @@ export default function OgrencilerPage() {
     }
   };
 
+  // 💬 WHATSAPP GRUP DAVETİ GÖNDERME
+  const whatsappGrupDavetiGonder = (telefon, veliAd, ogrenciAd, grupLink) => {
+    if (!telefon) {
+      alert("Veli telefon numarası bulunamadı!");
+      return;
+    }
+    if (!grupLink) {
+      alert("Lütfen önce WhatsApp Grup Katılım Linkini giriniz!");
+      return;
+    }
+
+    const mesaj =
+      `Sayın ${veliAd || "Velimiz"},\n\n` +
+      `*Balans Cimnastik Akademi* bünyesinde eğitim alan öğrencimiz *${ogrenciAd}*'ın duyuru ve bilgilendirme grubuna katılmak için aşağıdaki linke tıklayabilirsiniz:\n\n` +
+      `🔗 ${grupLink}\n\nİyi günler dileriz! 🤸‍♀️`;
+
+    const temizTel = telefon.replace(/\D/g, "");
+    const tel = temizTel.startsWith("90") ? temizTel : `90${temizTel}`;
+    window.open(
+      `https://wa.me/${tel}?text=${encodeURIComponent(mesaj)}`,
+      "_blank",
+    );
+  };
+
   // ➕ YENİ GRUP EKLEME
   const grupEkle = async (e) => {
     e.preventDefault();
@@ -86,7 +110,7 @@ export default function OgrencilerPage() {
       if (result.success) {
         setYeniEklenecekGrupAd("");
         gruplariGetir();
-        alert("Yeni grup başarıyla eklendi! 🎉");
+        alert("Yeni grup eklendi!");
       } else {
         alert(result.error || "Grup eklenemedi.");
       }
@@ -105,15 +129,13 @@ export default function OgrencilerPage() {
         body: JSON.stringify({ id }),
       });
       const result = await res.json();
-      if (result.success) {
-        gruplariGetir();
-      }
+      if (result.success) gruplariGetir();
     } catch (err) {
-      alert("Grup silinirken hata oluştu.");
+      alert("Grup silme hatası.");
     }
   };
 
-  // 🔄 KOLAY GRUP TRANSFER İŞLEMİ
+  // 🔄 TRANSFER İŞLEMİ
   const transferiOnayla = async () => {
     if (!transferOgrenci || !yeniHedefGrup) return;
 
@@ -130,33 +152,10 @@ export default function OgrencilerPage() {
           `${transferOgrenci.adSoyad} başarıyla "${yeniHedefGrup}" grubuna transfer edildi! 🎉`,
         );
         setTransferOgrenci(null);
-        if (seciliOgrenciDetay?.ogrenci._id === transferOgrenci._id) {
-          setSeciliOgrenciDetay((prev) => ({
-            ...prev,
-            ogrenci: { ...prev.ogrenci, grup: yeniHedefGrup },
-          }));
-        }
         ogrencileriGetir();
       }
     } catch (err) {
       alert("Transfer işleminde hata oluştu.");
-    }
-  };
-
-  const ogrenciDetayGetir = async (id) => {
-    setDetayLoading(true);
-    try {
-      const res = await fetch(`/api/ogrenciler/detay?id=${id}`, {
-        cache: "no-store",
-      });
-      const result = await res.json();
-      if (result.success) {
-        setSeciliOgrenciDetay(result.data);
-      }
-    } catch (err) {
-      alert("Öğrenci detayları alınamadı.");
-    } finally {
-      setDetayLoading(false);
     }
   };
 
@@ -174,7 +173,7 @@ export default function OgrencilerPage() {
       const result = await res.json();
       if (result.success) {
         alert(`${adSoyad} silindi.`);
-        if (seciliOgrenciDetay?.ogrenci._id === id) setSeciliOgrenciDetay(null);
+        if (seciliOgrenci?._id === id) setSeciliOgrenci(null);
         ogrencileriGetir();
       }
     } catch (err) {
@@ -193,9 +192,7 @@ export default function OgrencilerPage() {
 
       const result = await res.json();
       if (result.success) {
-        alert(
-          `${yeniOgrenci.adSoyad} "${yeniOgrenci.grup}" kadrosuna kaydedildi! 🎉`,
-        );
+        alert(`${yeniOgrenci.adSoyad} başarıyla kaydedildi! 🎉`);
         setYeniOgrenci({
           adSoyad: "",
           grup: gruplar.length > 0 ? gruplar[0].ad : "",
@@ -220,24 +217,24 @@ export default function OgrencilerPage() {
   const filtrelenmisOgrenciler = liste.filter(
     (o) =>
       o.adSoyad.toLowerCase().includes(aramaMetni.toLowerCase()) ||
-      o.veliAdSoyad.toLowerCase().includes(aramaMetni.toLowerCase()) ||
-      o.veliTelefon.includes(aramaMetni),
+      o.veliAdSoyad?.toLowerCase().includes(aramaMetni.toLowerCase()) ||
+      o.veliTelefon?.includes(aramaMetni),
   );
 
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto font-sans">
+      {/* ÜST SAYFA BAŞLIĞI VE GRUP YÖNETİMİ */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-3xl font-black text-slate-950 tracking-tight">
-            🎓 Öğrenci & Grup Yönetimi
+            📝 Öğrenci Kaydetme
           </h1>
           <p className="text-slate-600 text-sm font-semibold mt-1">
-            Grup isimlerini belirleyebilir ve öğrencileri seçtiğiniz gruplara
-            kolayca transfer edebilirsiniz.
+            Yeni öğrenci kaydedebilir, öğrenci detaylarını inceleyebilir ve
+            gruplar arası transfer yapabilirsiniz.
           </p>
         </div>
 
-        {/* GRUP YÖNETİM BUTONU */}
         <button
           onClick={() => setGrupYonetimAcik(true)}
           className="bg-indigo-900 hover:bg-indigo-950 text-white font-black px-5 py-3 rounded-2xl text-xs transition shadow-md flex items-center gap-2 self-start md:self-auto"
@@ -247,28 +244,28 @@ export default function OgrencilerPage() {
       </div>
 
       {/* 🔍 ARAMA VE GRUP FİLTRELEME PANENİ */}
-      <div className="bg-white p-5 rounded-3xl shadow-md border border-slate-300 mb-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="bg-white p-5 rounded-3xl shadow-md border-2 border-slate-300 mb-8 grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="md:col-span-2">
-          <label className="block text-xs font-black text-slate-700 uppercase mb-1">
+          <label className="block text-xs font-black text-slate-900 uppercase mb-1">
             🔍 Öğrenci / Veli Ara
           </label>
           <input
             type="text"
-            placeholder="İsim veya telefon numarası yazın..."
+            placeholder="Öğrenci adı, veli adı veya telefon numarası yazınız..."
             value={aramaMetni}
             onChange={(e) => setAramaMetni(e.target.value)}
-            className="w-full border-2 border-slate-300 p-3 rounded-xl text-sm font-bold outline-none focus:border-blue-600 bg-slate-50"
+            className="w-full border-2 border-slate-500 p-3 rounded-xl text-sm font-bold outline-none focus:border-blue-600 bg-slate-50 text-slate-950 placeholder:text-slate-400"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-black text-slate-700 uppercase mb-1">
+          <label className="block text-xs font-black text-slate-900 uppercase mb-1">
             🏷️ Gruba Göre Filtrele
           </label>
           <select
             value={seciliGrupFiltre}
             onChange={(e) => setSeciliGrupFiltre(e.target.value)}
-            className="w-full border-2 border-slate-300 p-3 rounded-xl text-sm font-bold outline-none focus:border-blue-600 bg-white"
+            className="w-full border-2 border-slate-500 p-3 rounded-xl text-sm font-black outline-none focus:border-blue-600 bg-white text-slate-950"
           >
             <option value="TUMU">Tüm Gruplar ({liste.length})</option>
             {gruplar.map((g) => (
@@ -280,24 +277,26 @@ export default function OgrencilerPage() {
         </div>
       </div>
 
-      {/* ➕ YENİ ÖĞRENCİ KAYIT FORMU */}
-      <div className="bg-white p-6 md:p-8 rounded-3xl shadow-lg border border-slate-300 mb-8">
-        <h2 className="text-xl font-black mb-5 text-slate-900 border-b border-slate-200 pb-3">
-          ➕ Yeni Öğrenci & İlk Grup Kaydı
+      {/* ➕ ÖĞRENCİ KAYDETME FORMU */}
+      <div className="bg-white p-6 md:p-8 rounded-3xl shadow-xl border-2 border-slate-300 mb-8">
+        <h2 className="text-xl font-black mb-6 text-slate-950 border-b-2 border-slate-200 pb-3 flex items-center gap-2">
+          <span>✍️</span> Öğrenci Kaydetme Formu
         </h2>
+
         <form
           onSubmit={handleSubmit}
-          className="grid grid-cols-1 md:grid-cols-3 gap-5"
+          className="grid grid-cols-1 md:grid-cols-3 gap-6"
         >
+          {/* ÖĞRENCİ BİLGİLERİ */}
           <div className="md:col-span-2">
-            <label className="block text-xs font-black text-slate-900 uppercase mb-1">
-              Öğrenci Ad Soyad *
+            <label className="block text-xs font-black text-slate-950 uppercase mb-1.5">
+              Öğrenci Adı Soyadı *
             </label>
             <input
               type="text"
               required
-              className="w-full border-2 border-slate-400 p-3 rounded-xl text-sm font-bold text-slate-950 bg-slate-50"
-              placeholder="Örn: Zeynep Asel KAN"
+              placeholder="Öğrencinin adını ve soyadını giriniz..."
+              className="w-full border-2 border-slate-500 p-3 rounded-xl text-sm font-bold text-slate-950 bg-slate-50 outline-none focus:border-blue-600 placeholder:text-slate-400"
               value={yeniOgrenci.adSoyad}
               onChange={(e) =>
                 setYeniOgrenci({ ...yeniOgrenci, adSoyad: e.target.value })
@@ -306,11 +305,11 @@ export default function OgrencilerPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-black text-slate-900 uppercase mb-1">
-              Başlangıç Grubu *
+            <label className="block text-xs font-black text-slate-950 uppercase mb-1.5">
+              Katılacağı Grup *
             </label>
             <select
-              className="w-full border-2 border-blue-600 p-3 rounded-xl text-sm font-black text-blue-900 bg-blue-50"
+              className="w-full border-2 border-blue-600 p-3 rounded-xl text-sm font-black text-blue-950 bg-blue-50 outline-none focus:border-blue-800"
               value={yeniOgrenci.grup}
               onChange={(e) =>
                 setYeniOgrenci({ ...yeniOgrenci, grup: e.target.value })
@@ -324,14 +323,16 @@ export default function OgrencilerPage() {
             </select>
           </div>
 
+          {/* ANNE BİLGİLERİ (1. VELİ) */}
           <div>
-            <label className="block text-xs font-bold text-slate-800 mb-1">
-              1. Veli Ad Soyad *
+            <label className="block text-xs font-black text-slate-950 uppercase mb-1.5">
+              👩 Anne / 1. Veli Ad Soyad *
             </label>
             <input
               type="text"
               required
-              className="w-full border-2 border-slate-400 p-2.5 rounded-xl text-sm font-bold text-slate-950"
+              placeholder="Anne adını ve soyadını giriniz..."
+              className="w-full border-2 border-slate-500 p-3 rounded-xl text-sm font-bold text-slate-950 bg-slate-50 outline-none focus:border-blue-600 placeholder:text-slate-400"
               value={yeniOgrenci.veliAdSoyad}
               onChange={(e) =>
                 setYeniOgrenci({ ...yeniOgrenci, veliAdSoyad: e.target.value })
@@ -340,13 +341,14 @@ export default function OgrencilerPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-800 mb-1">
-              1. Veli Telefon *
+            <label className="block text-xs font-black text-slate-950 uppercase mb-1.5">
+              📞 Anne / 1. Veli Telefon *
             </label>
             <input
               type="text"
               required
-              className="w-full border-2 border-slate-400 p-2.5 rounded-xl text-sm font-bold text-slate-950"
+              placeholder="05XXXXXXXXX formatında giriniz..."
+              className="w-full border-2 border-slate-500 p-3 rounded-xl text-sm font-bold text-slate-950 bg-slate-50 outline-none focus:border-blue-600 placeholder:text-slate-400 font-mono"
               value={yeniOgrenci.veliTelefon}
               onChange={(e) =>
                 setYeniOgrenci({ ...yeniOgrenci, veliTelefon: e.target.value })
@@ -355,12 +357,67 @@ export default function OgrencilerPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-black text-slate-900 uppercase mb-1">
+            <label className="block text-xs font-black text-slate-950 uppercase mb-1.5">
+              Yakınlık Derecesi
+            </label>
+            <select
+              className="w-full border-2 border-slate-500 p-3 rounded-xl text-sm font-bold text-slate-950 bg-slate-50 outline-none"
+              value={yeniOgrenci.veliYakinlik}
+              onChange={(e) =>
+                setYeniOgrenci({ ...yeniOgrenci, veliYakinlik: e.target.value })
+              }
+            >
+              <option value="Anne">Anne</option>
+              <option value="Baba">Baba</option>
+              <option value="Vasi">Vasi / Diğer</option>
+            </select>
+          </div>
+
+          {/* BABA BİLGİLERİ (2. VELİ) */}
+          <div>
+            <label className="block text-xs font-black text-slate-950 uppercase mb-1.5">
+              👨 Baba / 2. Veli Ad Soyad
+            </label>
+            <input
+              type="text"
+              placeholder="Baba adını ve soyadını giriniz (İsteğe bağlı)..."
+              className="w-full border-2 border-slate-500 p-3 rounded-xl text-sm font-bold text-slate-950 bg-slate-50 outline-none focus:border-blue-600 placeholder:text-slate-400"
+              value={yeniOgrenci.ikinciVeliAdSoyad}
+              onChange={(e) =>
+                setYeniOgrenci({
+                  ...yeniOgrenci,
+                  ikinciVeliAdSoyad: e.target.value,
+                })
+              }
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-black text-slate-950 uppercase mb-1.5">
+              📞 Baba / 2. Veli Telefon
+            </label>
+            <input
+              type="text"
+              placeholder="05XXXXXXXXX formatında giriniz..."
+              className="w-full border-2 border-slate-500 p-3 rounded-xl text-sm font-bold text-slate-950 bg-slate-50 outline-none focus:border-blue-600 placeholder:text-slate-400 font-mono"
+              value={yeniOgrenci.ikinciVeliTelefon}
+              onChange={(e) =>
+                setYeniOgrenci({
+                  ...yeniOgrenci,
+                  ikinciVeliTelefon: e.target.value,
+                })
+              }
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-black text-slate-950 uppercase mb-1.5">
               Aylık Ücret (₺)
             </label>
             <input
               type="number"
-              className="w-full border-2 border-slate-400 p-2.5 rounded-xl text-sm font-bold text-slate-950"
+              placeholder="Aylık kurs ücretini giriniz (Örn: 5000)..."
+              className="w-full border-2 border-slate-500 p-3 rounded-xl text-sm font-black text-emerald-900 bg-emerald-50 outline-none focus:border-emerald-600"
               value={yeniOgrenci.aylikUcret}
               onChange={(e) =>
                 setYeniOgrenci({
@@ -371,28 +428,30 @@ export default function OgrencilerPage() {
             />
           </div>
 
-          <div className="md:col-span-3">
+          <div className="md:col-span-3 pt-2">
             <button
               type="submit"
-              className="bg-blue-600 hover:bg-blue-700 text-white font-black py-3.5 px-8 rounded-xl text-sm transition shadow-md"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-black py-4 px-10 rounded-2xl text-sm transition shadow-lg w-full md:w-auto flex items-center justify-center gap-2"
             >
-              Kaydet
+              <span>💾</span> Öğrenciyi Sisteme Kaydet
             </button>
           </div>
         </form>
       </div>
 
       {/* 📋 ÖĞRENCİ LİSTESİ */}
-      <div className="bg-white p-6 md:p-8 rounded-3xl shadow-lg border border-slate-300">
-        <h2 className="text-xl font-black mb-5 text-slate-900 border-b border-slate-200 pb-3 flex justify-between items-center">
+      <div className="bg-white p-6 md:p-8 rounded-3xl shadow-xl border-2 border-slate-300">
+        <h2 className="text-xl font-black mb-5 text-slate-950 border-b-2 border-slate-200 pb-3 flex justify-between items-center">
           <span>📋 Kayıtlı Öğrenci Listesi</span>
-          <span className="text-xs bg-slate-100 px-3 py-1 rounded-full text-slate-600 font-bold">
+          <span className="text-xs bg-slate-100 border border-slate-300 px-3 py-1 rounded-full text-slate-700 font-black">
             Gösterilen: {filtrelenmisOgrenciler.length} / {liste.length}
           </span>
         </h2>
 
         {loading ? (
-          <p className="text-slate-700 font-bold">Yükleniyor...</p>
+          <p className="text-slate-700 font-bold py-4">
+            Öğrenciler yükleniyor...
+          </p>
         ) : filtrelenmisOgrenciler.length === 0 ? (
           <p className="text-slate-700 font-bold py-4">
             Arama kriterinize uygun öğrenci bulunamadı.
@@ -401,59 +460,61 @@ export default function OgrencilerPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b-2 border-slate-300 bg-slate-100 text-slate-900 text-xs font-black uppercase tracking-wider">
-                  <th className="p-4">Öğrenci Adı</th>
+                <tr className="border-b-2 border-slate-400 bg-slate-100 text-slate-950 text-xs font-black uppercase tracking-wider">
+                  <th className="p-4">Öğrenci Adı (Detay İçin Tıklayın)</th>
                   <th className="p-4">Mevcut Grubu</th>
-                  <th className="p-4">1. Veli İletişim</th>
-                  <th className="p-4">Ücret</th>
-                  <th className="p-4 text-right">Grup Transfer & Sil</th>
+                  <th className="p-4">Anne / Baba İletişim</th>
+                  <th className="p-4">Aylık Ücret</th>
+                  <th className="p-4 text-right">İşlemler</th>
                 </tr>
               </thead>
               <tbody>
                 {filtrelenmisOgrenciler.map((o) => (
                   <tr
                     key={o._id}
-                    className="border-b border-slate-200 hover:bg-blue-50/50 text-slate-950 transition"
+                    className="border-b border-slate-200 hover:bg-blue-50/60 text-slate-950 transition"
                   >
                     <td className="p-4">
+                      {/* 👤 ÖĞRENCİ ADINA TIKLANDIĞINDA TÜM BİLGİLERİN YER ALDIĞI MODAL AÇILIR */}
                       <button
-                        onClick={() => ogrenciDetayGetir(o._id)}
-                        className="font-black text-base text-blue-700 hover:text-blue-900 hover:underline text-left"
+                        onClick={() => setSeciliOgrenci(o)}
+                        className="font-black text-base text-blue-700 hover:text-blue-950 hover:underline text-left flex items-center gap-2"
                       >
-                        👤 {o.adSoyad}
+                        <span>👤</span> {o.adSoyad}
                       </button>
                     </td>
                     <td className="p-4">
-                      <span className="bg-indigo-100 text-indigo-900 font-black text-xs px-3 py-1.5 rounded-xl border border-indigo-200">
+                      <span className="bg-indigo-100 text-indigo-950 font-black text-xs px-3 py-1.5 rounded-xl border border-indigo-300">
                         🏆 {o.grup || "Belirtilmedi"}
                       </span>
                     </td>
                     <td className="p-4">
-                      <div className="font-extrabold text-slate-900">
-                        {o.veliAdSoyad}
+                      <div className="font-extrabold text-slate-950">
+                        👩 {o.veliAdSoyad} ({o.veliTelefon})
                       </div>
-                      <div className="text-xs font-bold text-slate-700 font-mono">
-                        {o.veliTelefon}
-                      </div>
+                      {o.ikinciVeliAdSoyad && (
+                        <div className="text-xs font-bold text-slate-700">
+                          👨 {o.ikinciVeliAdSoyad} ({o.ikinciVeliTelefon})
+                        </div>
+                      )}
                     </td>
                     <td className="p-4 font-black text-emerald-700 text-base">
                       ₺ {o.aylikUcret}
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        {/* 🔄 KOLAY TRANSFER BUTONU */}
                         <button
                           onClick={() => {
                             setTransferOgrenci(o);
                             setYeniHedefGrup(o.grup || gruplar[0]?.ad || "");
                           }}
-                          className="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 font-bold py-1.5 px-3 rounded-lg text-xs transition"
+                          className="bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-400 font-bold py-1.5 px-3 rounded-xl text-xs transition"
                         >
                           🔄 Transfer Et
                         </button>
                         <button
                           onClick={() => kaliciSil(o._id, o.adSoyad)}
-                          className="bg-rose-600 hover:bg-rose-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition"
+                          className="bg-rose-600 hover:bg-rose-700 text-white font-bold py-1.5 px-3 rounded-xl text-xs transition"
                         >
                           🗑️ Sil
                         </button>
@@ -467,10 +528,150 @@ export default function OgrencilerPage() {
         )}
       </div>
 
+      {/* 📄 ÖĞRENCİ DETAY VE WHATSAPP GRUP DAVETİ MODALI */}
+      {seciliOgrenci && (
+        <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white max-w-xl w-full rounded-3xl shadow-2xl overflow-hidden border-2 border-slate-300">
+            <div className="bg-slate-900 text-white p-6 flex justify-between items-center">
+              <div>
+                <span className="bg-blue-600 text-white text-[10px] font-black uppercase px-3 py-1 rounded-full">
+                  Öğrenci Profil Kartı
+                </span>
+                <h2 className="text-2xl font-black text-emerald-400 mt-1">
+                  {seciliOgrenci.adSoyad}
+                </h2>
+              </div>
+              <button
+                onClick={() => setSeciliOgrenci(null)}
+                className="bg-slate-800 hover:bg-slate-700 text-white w-9 h-9 rounded-full font-black text-base"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* GENEL BİLGİLER */}
+              <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                <div>
+                  <span className="text-[11px] font-black text-slate-500 uppercase block">
+                    Mevcut Grubu
+                  </span>
+                  <span className="text-sm font-black text-indigo-900">
+                    🏆 {seciliOgrenci.grup}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[11px] font-black text-slate-500 uppercase block">
+                    Aylık Kurs Ücreti
+                  </span>
+                  <span className="text-sm font-black text-emerald-700">
+                    ₺ {seciliOgrenci.aylikUcret}
+                  </span>
+                </div>
+              </div>
+
+              {/* ANNE VE BABA İLETİŞİM BİLGİLERİ */}
+              <div className="space-y-3">
+                <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider border-b border-slate-200 pb-1">
+                  👨‍👩‍👧 Veli İletişim Bilgileri
+                </h3>
+
+                {/* 1. VELİ (ANNE) */}
+                <div className="flex justify-between items-center bg-blue-50/50 p-3 rounded-xl border border-blue-200">
+                  <div>
+                    <span className="text-xs font-black text-slate-900 block">
+                      👩 Anne / 1. Veli: {seciliOgrenci.veliAdSoyad}
+                    </span>
+                    <span className="text-xs font-bold text-slate-600 font-mono">
+                      {seciliOgrenci.veliTelefon}
+                    </span>
+                  </div>
+                  {seciliOgrenci.veliTelefon && (
+                    <button
+                      onClick={() =>
+                        whatsappGrupDavetiGonder(
+                          seciliOgrenci.veliTelefon,
+                          seciliOgrenci.veliAdSoyad,
+                          seciliOgrenci.adSoyad,
+                          whatsappGrupLinki,
+                        )
+                      }
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-3 py-1.5 rounded-xl text-xs transition shadow-sm flex items-center gap-1"
+                    >
+                      <span>📲</span> WhatsApp Daveti Gönder
+                    </button>
+                  )}
+                </div>
+
+                {/* 2. VELİ (BABA) */}
+                {seciliOgrenci.ikinciVeliAdSoyad ? (
+                  <div className="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <div>
+                      <span className="text-xs font-black text-slate-900 block">
+                        👨 Baba / 2. Veli: {seciliOgrenci.ikinciVeliAdSoyad}
+                      </span>
+                      <span className="text-xs font-bold text-slate-600 font-mono">
+                        {seciliOgrenci.ikinciVeliTelefon}
+                      </span>
+                    </div>
+                    {seciliOgrenci.ikinciVeliTelefon && (
+                      <button
+                        onClick={() =>
+                          whatsappGrupDavetiGonder(
+                            seciliOgrenci.ikinciVeliTelefon,
+                            seciliOgrenci.ikinciVeliAdSoyad,
+                            seciliOgrenci.adSoyad,
+                            whatsappGrupLinki,
+                          )
+                        }
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-3 py-1.5 rounded-xl text-xs transition shadow-sm flex items-center gap-1"
+                      >
+                        <span>📲</span> WhatsApp Daveti Gönder
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500 font-bold italic">
+                    2. Veli (Baba) bilgisi girilmemiş.
+                  </p>
+                )}
+              </div>
+
+              {/* WHATSAPP GRUP LİNKİ GİRDİSİ */}
+              <div className="bg-emerald-50 border-2 border-emerald-300 p-4 rounded-2xl">
+                <label className="block text-xs font-black text-emerald-950 uppercase mb-1">
+                  🔗 WhatsApp Grup Katılım Linkiniz
+                </label>
+                <input
+                  type="text"
+                  placeholder="https://chat.whatsapp.com/... linkini buraya yapıştırın"
+                  value={whatsappGrupLinki}
+                  onChange={(e) => setWhatsappGrupLinki(e.target.value)}
+                  className="w-full border-2 border-emerald-400 p-2.5 rounded-xl text-xs font-bold text-slate-900 bg-white outline-none focus:border-emerald-600"
+                />
+                <span className="text-[10px] text-emerald-800 font-bold block mt-1">
+                  Yukarıdaki "WhatsApp Daveti Gönder" butonuna bastığınızda bu
+                  link otomatik mesaja eklenir.
+                </span>
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-100 border-t border-slate-200 text-right">
+              <button
+                onClick={() => setSeciliOgrenci(null)}
+                className="bg-slate-900 hover:bg-slate-800 text-white font-black px-6 py-2.5 rounded-xl text-xs"
+              >
+                Kapat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ⚙️ ÖZEL GRUP YÖNETİM MODALI */}
       {grupYonetimAcik && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white max-w-lg w-full rounded-3xl shadow-2xl overflow-hidden border border-slate-300">
+        <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white max-w-lg w-full rounded-3xl shadow-2xl overflow-hidden border-2 border-slate-300">
             <div className="bg-indigo-950 text-white p-6 flex justify-between items-center">
               <div>
                 <h2 className="text-xl font-black text-emerald-400">
@@ -482,21 +683,20 @@ export default function OgrencilerPage() {
               </div>
               <button
                 onClick={() => setGrupYonetimAcik(false)}
-                className="bg-indigo-900 hover:bg-indigo-800 text-white w-9 h-9 rounded-full font-black"
+                className="bg-indigo-900 text-white w-9 h-9 rounded-full font-black"
               >
                 ✕
               </button>
             </div>
 
             <div className="p-6 space-y-6">
-              {/* YENİ GRUP EKLEME FORMU */}
               <form onSubmit={grupEkle} className="flex gap-2">
                 <input
                   type="text"
                   placeholder="Örn: Hafta Sonu 10:00 Grubu..."
                   value={yeniEklenecekGrupAd}
                   onChange={(e) => setYeniEklenecekGrupAd(e.target.value)}
-                  className="flex-1 border-2 border-slate-300 p-3 rounded-xl text-sm font-bold text-slate-950 outline-none focus:border-indigo-600"
+                  className="flex-1 border-2 border-slate-500 p-3 rounded-xl text-sm font-bold text-slate-950 outline-none focus:border-indigo-600"
                 />
                 <button
                   type="submit"
@@ -506,7 +706,6 @@ export default function OgrencilerPage() {
                 </button>
               </form>
 
-              {/* MEVCUT GRUPLAR LİSTESİ */}
               <div className="space-y-2 max-h-60 overflow-y-auto">
                 <span className="text-xs font-black text-slate-500 uppercase block mb-1">
                   Mevcut Gruplar
@@ -542,10 +741,10 @@ export default function OgrencilerPage() {
         </div>
       )}
 
-      {/* 🔄 KOLAY GRUP TRANSFER MODALI */}
+      {/* 🔄 GRUP TRANSFER MODALI */}
       {transferOgrenci && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white max-w-md w-full rounded-3xl shadow-2xl overflow-hidden border border-slate-300">
+        <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white max-w-md w-full rounded-3xl shadow-2xl overflow-hidden border-2 border-slate-300">
             <div className="bg-amber-500 text-slate-950 p-6">
               <span className="bg-slate-950 text-white text-[10px] font-black uppercase px-2.5 py-1 rounded-full">
                 Grup Transfer İşlemi
