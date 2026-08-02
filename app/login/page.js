@@ -1,39 +1,39 @@
-'use client';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Image from 'next/image';
+"use client";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 export default function LoginPage() {
-  const [yoneticiAdi, setYoneticiAdi] = useState('');
-  const [sifre, setSifre] = useState('');
+  const [yoneticiAdi, setYoneticiAdi] = useState("");
+  const [sifre, setSifre] = useState("");
   const [sifreGoster, setSifreGoster] = useState(false);
-  const [hata, setHata] = useState('');
+  const [hata, setHata] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    setHata('');
+    setHata("");
     setLoading(true);
 
     try {
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ yoneticiAdi, sifre }),
       });
 
       const data = await res.json();
 
       if (data.success) {
-        router.push('/ogrenciler');
+        router.push("/ogrenciler");
         router.refresh();
       } else {
-        setHata(data.error || 'Hatalı yönetici adı veya şifre girdiniz!');
+        setHata(data.error || "Hatalı yönetici adı veya şifre girdiniz!");
       }
     } catch (err) {
-      setHata('Giriş yapılırken bir hata oluştu.');
-    } font-sans finally {
+      setHata("Giriş yapılırken bir hata oluştu.");
+    } finally {
       setLoading(false);
     }
   };
@@ -41,7 +41,6 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 font-sans">
       <div className="bg-white max-w-md w-full p-8 rounded-3xl shadow-2xl border border-slate-800">
-        
         {/* LOGO & BAŞLIK */}
         <div className="text-center mb-8 flex flex-col items-center">
           <div className="w-32 h-32 relative mb-4 drop-shadow-md">
@@ -92,7 +91,7 @@ export default function LoginPage() {
             </label>
             <div className="relative">
               <input
-                type={sifreGoster ? 'text' : 'password'}
+                type={sifreGoster ? "text" : "password"}
                 required
                 placeholder="Şifrenizi giriniz..."
                 value={sifre}
@@ -103,9 +102,9 @@ export default function LoginPage() {
                 type="button"
                 onClick={() => setSifreGoster(!sifreGoster)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-900 text-lg p-1 transition"
-                title={sifreGoster ? 'Şifreyi Gizle' : 'Şifreyi Göster'}
+                title={sifreGoster ? "Şifreyi Gizle" : "Şifreyi Göster"}
               >
-                {sifreGoster ? '🙈' : '👁️'}
+                {sifreGoster ? "🙈" : "👁️"}
               </button>
             </div>
           </div>
@@ -115,7 +114,7 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-black py-4 rounded-2xl text-sm transition shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2"
           >
-            {loading ? 'Giriş Yapılıyor...' : '🚀 Sisteme Giriş Yap'}
+            {loading ? "Giriş Yapılıyor..." : "🚀 Sisteme Giriş Yap"}
           </button>
         </form>
       </div>
