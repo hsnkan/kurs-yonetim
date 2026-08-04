@@ -23,14 +23,14 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (data.success) {
-        // 🚀 Doğrudan yönlendirme (Takılmayı önler)
-        window.location.href = "/ogrenciler";
+        // Çerezin tazeleşmesi ve doğrudan yönlendirme için
+        window.location.replace("/ogrenciler");
       } else {
         setHata(data.error || "Hatalı kullanıcı adı veya şifre!");
         setLoading(false);
       }
     } catch (err) {
-      setHata("Sunucu bağlantı hatası oluştu.");
+      setHata("Sunucu bağlantı hatası.");
       setLoading(false);
     }
   };
@@ -71,12 +71,12 @@ export default function LoginPage() {
           {/* YÖNETİCİ ADI */}
           <div>
             <label className="block text-xs font-black text-slate-900 uppercase mb-2">
-              👤 Yönetici Adı / Kullanıcı Adı
+              👤 Yönetici Adı
             </label>
             <input
               type="text"
               required
-              placeholder="admin"
+              placeholder="Balans"
               value={yoneticiAdi}
               onChange={(e) => setYoneticiAdi(e.target.value)}
               className="w-full border-2 border-slate-400 p-3.5 rounded-2xl text-sm font-bold text-slate-950 outline-none focus:border-blue-600 bg-slate-50 transition"
@@ -92,7 +92,7 @@ export default function LoginPage() {
               <input
                 type={sifreGoster ? "text" : "password"}
                 required
-                placeholder="Balans2026!"
+                placeholder="B2026cimnastik!"
                 value={sifre}
                 onChange={(e) => setSifre(e.target.value)}
                 className="w-full border-2 border-slate-400 p-3.5 pr-12 rounded-2xl text-sm font-bold text-slate-950 outline-none focus:border-blue-600 bg-slate-50 transition"

@@ -4,11 +4,10 @@ export async function POST(request) {
   try {
     const body = await request.json();
 
-    // Kullanıcının formdan girdiği veriler (Boşluklar temizlenir)
     const girilenAd = (body.yoneticiAdi || "").toString().trim().toLowerCase();
     const girilenSifre = (body.sifre || "").toString().trim();
 
-    // 🔒 SABİT YÖNETİCİ GİRİŞ BİLGİLERİ (Vercel ENV'ye gerek yok)
+    // 🔒 SABİT BİLGİLER
     const HEDEF_KULLANICI = "balans";
     const HEDEF_SIFRE = "B2026cimnastik!";
 
@@ -18,10 +17,10 @@ export async function POST(request) {
         message: "Giriş Başarılı",
       });
 
-      // Oturum çerezini tanımlıyoruz (1 Günlük)
+      // Çerezi sadeleştirip her ortamda geçerli kılalım
       response.cookies.set("admin_session", "true", {
         path: "/",
-        maxAge: 86400,
+        maxAge: 60 * 60 * 24 * 7, // 7 gün
         sameSite: "lax",
       });
 
@@ -34,7 +33,7 @@ export async function POST(request) {
     );
   } catch (error) {
     return NextResponse.json(
-      { success: false, error: "Giriş işlemi esnasında sunucu hatası." },
+      { success: false, error: "Sunucu hatası" },
       { status: 500 },
     );
   }
