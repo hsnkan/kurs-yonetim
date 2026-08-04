@@ -4,18 +4,13 @@ export async function POST(request) {
   try {
     const body = await request.json();
 
-    // Kullanıcının formdan girdiği veriler
+    // Kullanıcının formdan girdiği veriler (Boşluklar temizlenir)
     const girilenAd = (body.yoneticiAdi || "").toString().trim().toLowerCase();
     const girilenSifre = (body.sifre || "").toString().trim();
 
-    // 🔒 Vercel / .env Üzerinden Gelen Yeni Değişkenleriniz
-    const HEDEF_KULLANICI = (process.env.ADMIN_USER || "Balans")
-      .toString()
-      .trim()
-      .toLowerCase();
-    const HEDEF_SIFRE = (process.env.ADMIN_PASS || "B2026cimnastik!")
-      .toString()
-      .trim();
+    // 🔒 SABİT YÖNETİCİ GİRİŞ BİLGİLERİ (Vercel ENV'ye gerek yok)
+    const HEDEF_KULLANICI = "balans";
+    const HEDEF_SIFRE = "B2026cimnastik!";
 
     if (girilenAd === HEDEF_KULLANICI && girilenSifre === HEDEF_SIFRE) {
       const response = NextResponse.json({
@@ -23,10 +18,10 @@ export async function POST(request) {
         message: "Giriş Başarılı",
       });
 
-      // Oturum çerezini tanımlıyoruz
+      // Oturum çerezini tanımlıyoruz (1 Günlük)
       response.cookies.set("admin_session", "true", {
         path: "/",
-        maxAge: 86400, // 24 Saat
+        maxAge: 86400,
         sameSite: "lax",
       });
 
