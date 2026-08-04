@@ -2,19 +2,16 @@ import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import Ogrenci from "@/models/Ogrenci";
 
+// ==========================================
+// 1. ÖĞRENCİ LİSTELEME SERVİSİ (GET)
+// ==========================================
 export async function GET(request) {
   try {
     await dbConnect();
     const { searchParams } = new URL(request.url);
     const durum = searchParams.get("durum") || "AKTIF";
-    const grup = searchParams.get("grup");
 
-    const filtre = { durum };
-    if (grup && grup !== "TUMU") {
-      filtre.grup = grup;
-    }
-
-    const ogrenciler = await Ogrenci.find(filtre).sort({ adSoyad: 1 });
+    const ogrenciler = await Ogrenci.find({ durum }).sort({ createdAt: -1 });
     return NextResponse.json({ success: true, data: ogrenciler });
   } catch (error) {
     return NextResponse.json(
@@ -24,32 +21,109 @@ export async function GET(request) {
   }
 }
 
+// ==========================================
+// 2. TEKLİ VE EXCEL TOPLU ÖĞRENCİ EKLEME (POST)
+// ==========================================
 export async function POST(request) {
   try {
     await dbConnect();
     const body = await request.json();
-    const yeniOgrenci = await Ogrenci.create(body);
+
+    // 📊 KONTROL: Eğer gelen veri bir DİZİ (Array) ise Excel Toplu Yüklemesidir
+    if (Array.isArray(body.liste)) {
+      const eklenenler = [];
+      for (const item of body.liste) {
+        if (item.adSoyad && item.adSoyad.trim()) {
+          const yeni = await Ogrenci.create({
+            adSoyad: item.adSoyad.trim(),
+            veliAdSoyad: item.veliAdSoyad?.trim() || "",
+            veliTelefon: item.veliTelefon?.trim() || "",
+            grup: item.grup?.trim() || "Genel Kadro",
+            aylikUcret: Number(item.aylikUcret || 0),
+            odemeGunu: Number(item.odemeGunu || 1),
+            durum: "AKTIF",
+            kayitTarihi: new Date(),
+          });
+          eklenenler.push(yeni);
+        }
+      }
+      return NextResponse.json({
+        success: true,
+        message: `${eklenenler.length} adet öğrenci Excel ile başarıyla eklendi!`,
+      });
+    }
+
+    // 👤 TEKLİ ÖĞRENCİ EKLEME İŞLEMİ
+    const yeniOgrenci = await Ogrenci.create({
+      adSoyad: body.adSoyad,
+      veliAdSoyad: body.veliAdSoyad || "",
+      veliTelefon: body.veliTelefon || "",
+      babaAdSoyad: body.babaAdSoyad || "",
+      babaTelefon: body.babaTelefon || "",
+      grup: body.grup || "Genel Kadro",
+      aylikUcret: Number(body.aylikUcret || 0),
+      odemeGunu: Number(body.odemeGunu || 1),
+      durum: "AKTIF",
+      kayitTarihi: new Date(),
+    });
+
     return NextResponse.json({ success: true, data: yeniOgrenci });
   } catch (error) {
     return NextResponse.json(
       { success: false, error: error.message },
-      { status: 400 },
+      { status: 500 },
     );
   }
 }
 
+// ==========================================
+// 3. ÖĞRENCİ DURUMU DONDURMA / GÜNCELLEME (PUT)
+// ==========================================
 export async function PUT(request) {
   try {
     await dbConnect();
-    const { id, ...guncelVeri } = await request.json();
-    const ogrenci = await Ogrenci.findByIdAndUpdate(id, guncelVeri, {
-      new: true,
-    });
-    return NextResponse.json({ success: true, data: ogrenci });
+    const { id, durum } = await request.json();
+
+    const guncelOgrenci = await Ogrenci.findByIdAndUpdate(
+      id,
+      { durum },
+      { new: true },
+    );
+
+    return NextResponse.json({ success: true, data: guncelOgrenci });
   } catch (error) {
     return NextResponse.json(
       { success: false, error: error.message },
-      { status: 400 },
+      { status: 500 },
+    );
+  }
+}
+
+// ==========================================
+// 4. ÖĞRENCİ TAMAMEN SİLME İŞLEMİ (DELETE)
+// ==========================================
+export async function DELETE(request) {
+  try {
+    await dbConnect();
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return NextResponse.json(
+        { success: false, error: "Öğrenci ID bulunamadı." },
+        { status: 400 },
+      );
+    }
+
+    await Ogrenci.findByIdAndDelete(id);
+    return NextResponse.json({
+      success: true,
+      message: "Öğrenci başarıyla silindi.",
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 },
     );
   }
 }
