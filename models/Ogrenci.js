@@ -3,17 +3,34 @@ import mongoose from "mongoose";
 const OgrenciSchema = new mongoose.Schema(
   {
     adSoyad: { type: String, required: true },
-    grup: { type: String, default: "Genel Grup" }, // 👈 Grup Alanı Eklendi
-    veliAdSoyad: { type: String, required: true },
-    veliTelefon: { type: String, required: true },
-    veliYakinlik: { type: String, default: "Anne" },
-    ikinciVeliAdSoyad: { type: String, default: "" },
-    ikinciVeliTelefon: { type: String, default: "" },
-    ikinciVeliYakinlik: { type: String, default: "Baba" },
-    nfcUid: { type: String, default: "" },
-    aylikUcret: { type: Number, default: 5000 },
+    resimUrl: { type: String, default: "/default-avatar.png" },
+    kanGrubu: { type: String, default: "Belirtilmedi" },
+    lisansliMi: { type: Boolean, default: false },
+    katilimGunleri: [{ type: String }],
+
+    // 👨‍👩‍👧‍👦 ÇOKLU VELİ DİZİSİ (Required esnetildi)
+    veliListesi: [
+      {
+        adSoyad: { type: String },
+        yakinlikDerecesi: { type: String, default: "Anne" },
+        telefon: { type: String },
+      },
+    ],
+
+    grup: { type: String, required: true },
+    grupTransferGecmisi: [
+      {
+        eskiGrup: String,
+        yeniGrup: String,
+        tarih: { type: Date, default: Date.now },
+      },
+    ],
+
+    aylikUcret: { type: Number, default: 2000 },
     odemeGunu: { type: Number, default: 1 },
-    durum: { type: String, enum: ["AKTIF", "PASIF"], default: "AKTIF" },
+    nfcKartId: { type: String, sparse: true },
+    durum: { type: String, enum: ["aktif", "pasif"], default: "aktif" },
+    kayitTarihi: { type: Date, default: Date.now },
   },
   { timestamps: true },
 );

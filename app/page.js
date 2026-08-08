@@ -1,177 +1,189 @@
 "use client";
-import { useState, useEffect } from "react";
-import Link from "next/link";
 
-export default function DashboardPage() {
-  const [ozet, setOzet] = useState({
-    toplamOgrenci: 0,
-    bugunGelenler: 0,
-    bekleyenOdemeSayisi: 0,
-    buAyGelir: 0,
-    sonYoklamalar: [],
-  });
-  const [loading, setLoading] = useState(true);
+import { useState } from "react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
 
-  useEffect(() => {
-    async function dashboardVerileriniGetir() {
-      try {
-        // Öğrenci verileri
-        const ogrenciRes = await fetch("/api/ogrenciler", {
-          cache: "no-store",
-        });
-        const ogrenciText = await ogrenciRes.text();
-        const ogrenciData = ogrenciText
-          ? JSON.parse(ogrenciText)
-          : { success: false, data: [] };
+export default function GirisSayfasi() {
+  const router = useRouter();
 
-        // Muhasebe verileri
-        const muhasebeRes = await fetch("/api/muhasebe", { cache: "no-store" });
-        const muhasebeText = await muhasebeRes.text();
-        const muhasebeData = muhasebeText
-          ? JSON.parse(muhasebeText)
-          : {
-              success: false,
-              data: { odemesiBekleyenler: [], buAyToplamGelir: 0 },
-            };
+  // 🔐 KULLANICI ADI VE ŞİFRE
+  const SABIT_KULLANICI_ADI = "admin";
+  const SABIT_SIFRE = "balans123";
 
-        if (ogrenciData.success || muhasebeData.success) {
-          setOzet({
-            toplamOgrenci: ogrenciData.data?.length || 0,
-            bugunGelenler: 0,
-            bekleyenOdemeSayisi:
-              muhasebeData.data?.odemesiBekleyenler?.length || 0,
-            buAyGelir: muhasebeData.data?.buAyToplamGelir || 0,
-            sonYoklamalar: [],
-          });
-        }
-      } catch (error) {
-        console.error("Dashboard verileri yüklenemedi:", error);
-      } finally {
-        setLoading(false);
+  const [kullaniciAdi, setKullaniciAdi] = useState("");
+  const [sifre, setSifre] = useState("");
+  const [hata, setHata] = useState("");
+  const [yukleniyor, setYukleniyor] = useState(false);
+  const [animasyonBasladi, setAnimasyonBasladi] = useState(false);
+
+  const girisYap = (e) => {
+    e.preventDefault();
+    setHata("");
+    setYukleniyor(true);
+
+    setTimeout(() => {
+      if (kullaniciAdi === SABIT_KULLANICI_ADI && sifre === SABIT_SIFRE) {
+        // Oturum durumunu kaydet
+        localStorage.setItem("isLoggedIn", "true");
+
+        // 🤸 KADIN & ERKEK SPORCU ANİMASYONUNU BAŞLAT
+        setAnimasyonBasladi(true);
+
+        // 3.8 saniyelik gösteri sonrası NFC Yoklama Sayfasına Yönlendir
+        setTimeout(() => {
+          router.push("/dashboard/yoklama/nfc");
+        }, 3800);
+      } else {
+        setHata("Kullanıcı adı veya şifre hatalı!");
+        setYukleniyor(false);
       }
-    }
-
-    dashboardVerileriniGetir();
-  }, []);
+    }, 400);
+  };
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans p-6 md:p-10">
-      {/* ÜST BAŞLIK */}
-      <div className="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-            🤸 Balans Cimnastik Yönetim Paneli
+    <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-4 relative overflow-hidden font-sans">
+      {/* 🤸‍♂️🤸‍♀️ KADIN VE ERKEK SPORCULARIN AKICI PARENDE SHOW SAHNESİ */}
+      {animasyonBasladi && (
+        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-xl z-[9999] flex items-center justify-center overflow-hidden pointer-events-none">
+          {/* ORTADA YAZAN PRESTİJLİ HOŞ GELDİNİZ ROZETİ */}
+          <div className="absolute top-12 left-1/2 -translate-x-1/2 bg-slate-900/90 border-2 border-amber-400/60 text-amber-400 font-black px-8 py-3.5 rounded-3xl shadow-[0_0_50px_rgba(245,158,11,0.3)] text-sm sm:text-base tracking-widest uppercase flex items-center gap-3 animate-pulse z-20">
+            <span className="w-3 h-3 rounded-full bg-amber-400"></span>
+            <span>Balans Cimnastik Paneline Bağlanılıyor...</span>
+          </div>
+
+          {/* 🤸‍♀️ 1. KADIN SPORCU (ÖNDEN GEÇEN) */}
+          <div className="parende-kadin absolute left-0 flex flex-col items-center">
+            <span className="text-[10rem] sm:text-[14rem] filter drop-shadow-[0_15px_35px_rgba(245,158,11,0.8)] select-none">
+              🤸‍♀️
+            </span>
+          </div>
+
+          {/* 🤸‍♂️ 2. ERKEK SPORCU (TAKİP EDEN) */}
+          <div className="parende-erkek absolute left-0 flex flex-col items-center">
+            <span className="text-[10rem] sm:text-[14rem] filter drop-shadow-[0_15px_35px_rgba(59,130,246,0.8)] select-none">
+              🤸‍♂️
+            </span>
+          </div>
+
+          {/* DÜZELTİLMİŞ KESİNTİSİZ AKICI CSS PARENDE STİLİ */}
+          <style jsx>{`
+            @keyframes parendeAkici {
+              0% {
+                transform: translateX(-30vw) translateY(30px) rotate(0deg);
+              }
+              50% {
+                transform: translateX(45vw) translateY(-30px) rotate(720deg);
+              }
+              100% {
+                transform: translateX(125vw) translateY(30px) rotate(1440deg);
+              }
+            }
+
+            /* Kadın Sporcu Önde */
+            .parende-kadin {
+              animation: parendeAkici 3.6s linear forwards;
+            }
+
+            /* Erkek Sporcu Hafif Gecikmeli ve Takipte */
+            .parende-erkek {
+              animation: parendeAkici 3.6s linear forwards;
+              animation-delay: 0.25s;
+              margin-top: 40px;
+            }
+          `}</style>
+        </div>
+      )}
+
+      {/* CİMNASTİK TEMALI DİNAMİK ARKA PLAN ÇİZGİLERİ */}
+      <div className="absolute inset-0 pointer-events-none opacity-20 z-0">
+        <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M-100,200 C300,50 600,400 1200,100"
+            stroke="#f59e0b"
+            strokeWidth="4"
+            fill="none"
+          />
+          <path
+            d="M-50,400 C400,200 800,600 1500,200"
+            stroke="#3b82f6"
+            strokeWidth="3"
+            fill="none"
+          />
+        </svg>
+      </div>
+
+      {/* ORTADAKİ GİRİŞ KART DIŞ GÖVDESİ */}
+      <div className="bg-white rounded-3xl p-8 sm:p-10 max-w-md w-full shadow-2xl border-2 border-slate-200 z-10 space-y-6 text-slate-900">
+        {/* AMBLEM & BAŞLIK (ORTA ÜST BÖLÜM) */}
+        <div className="flex flex-col items-center text-center">
+          <div className="relative w-28 h-28 rounded-full overflow-hidden border-4 border-amber-400 shadow-xl mb-4 bg-slate-900">
+            <Image
+              src="/logo.png"
+              alt="Balans Cimnastik Akademi Logo"
+              fill
+              className="object-cover"
+              priority
+            />
+          </div>
+          <h1 className="text-2xl font-black text-slate-900 tracking-wider uppercase">
+            BALANS CİMNASTİK
           </h1>
-          <p className="text-slate-500 text-sm mt-1">
-            Hoş geldiniz! Kurs genel durumu ve bugünün hareket özetleri.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
-            ● Sistem Aktif
-          </span>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
-        {/* İSTATİSTİK KARTLARI */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-          <p className="text-xs font-semibold uppercase text-slate-400 tracking-wider">
-            Toplam Öğrenci
-          </p>
-          <p className="text-3xl font-bold text-slate-800 mt-2">
-            {loading ? "..." : ozet.toplamOgrenci}
+          <p className="text-xs font-black text-amber-600 tracking-widest uppercase mt-0.5">
+            Akademi Yönetim Paneli
           </p>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-          <p className="text-xs font-semibold uppercase text-slate-400 tracking-wider">
-            Bu Ayki Gelir
-          </p>
-          <p className="text-3xl font-bold text-emerald-600 mt-2">
-            ₺ {loading ? "..." : ozet.buAyGelir}
-          </p>
-        </div>
+        {/* HATA BİLDİRİMİ */}
+        {hata && (
+          <div className="p-3.5 rounded-xl bg-rose-100 border-2 border-rose-400 text-rose-950 font-black text-xs text-center animate-shake">
+            ⚠️ {hata}
+          </div>
+        )}
 
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-          <p className="text-xs font-semibold uppercase text-slate-400 tracking-wider">
-            Ödemesi Bekleyen
-          </p>
-          <p className="text-3xl font-bold text-amber-600 mt-2">
-            {loading ? "..." : `${ozet.bekleyenOdemeSayisi} Kişi`}
-          </p>
-        </div>
+        {/* GİRİŞ FORMU */}
+        <form onSubmit={girisYap} className="space-y-4">
+          <div>
+            <label className="block text-xs font-black uppercase text-slate-700 mb-1">
+              Kullanıcı Adı
+            </label>
+            <input
+              type="text"
+              required
+              value={kullaniciAdi}
+              onChange={(e) => setKullaniciAdi(e.target.value)}
+              placeholder="Kullanıcı adınızı girin"
+              className="w-full p-3.5 rounded-xl border-2 border-slate-300 font-bold text-sm outline-none focus:border-amber-500 bg-slate-50 focus:bg-white text-slate-900 transition-colors"
+            />
+          </div>
 
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-          <p className="text-xs font-semibold uppercase text-slate-400 tracking-wider">
-            NFC Yoklama İstasyonu
-          </p>
-          <p className="text-sm font-semibold text-indigo-600 mt-3">
-            Hazır & Dinleniyor
-          </p>
-        </div>
-      </div>
+          <div>
+            <label className="block text-xs font-black uppercase text-slate-700 mb-1">
+              Şifre
+            </label>
+            <input
+              type="password"
+              required
+              value={sifre}
+              onChange={(e) => setSifre(e.target.value)}
+              placeholder="••••••••"
+              className="w-full p-3.5 rounded-xl border-2 border-slate-300 font-bold text-sm outline-none focus:border-amber-500 bg-slate-50 focus:bg-white text-slate-900 transition-colors"
+            />
+          </div>
 
-      {/* HIZLI ERİŞİM KISAYOLLARI */}
-      <div className="max-w-7xl mx-auto mb-10">
-        <h2 className="text-lg font-bold text-slate-800 mb-4">🚀 Hızlı Menü</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Link
-            href="/ogrenciler"
-            className="group p-6 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-300 transition duration-200 flex flex-col justify-between"
+          <button
+            type="submit"
+            disabled={yukleniyor}
+            className="w-full mt-2 bg-[#0F172A] hover:bg-slate-800 text-amber-400 font-black py-4 rounded-xl shadow-xl transition-all text-sm tracking-wider uppercase flex items-center justify-center gap-2 border-2 border-amber-400/50"
           >
-            <div>
-              <div className="text-3xl mb-3">🎓</div>
-              <h3 className="text-lg font-bold text-slate-800 group-hover:text-indigo-600 transition">
-                Öğrenci Yönetimi
-              </h3>
-              <p className="text-slate-500 text-xs mt-1">
-                Yeni kayıt ekleyin, NFC kart tanımlayın ve öğrenci listesini
-                inceleyin.
-              </p>
-            </div>
-            <span className="text-xs font-semibold text-indigo-600 mt-4 inline-flex items-center gap-1">
-              Modüle Git →
-            </span>
-          </Link>
+            {yukleniyor ? "Giriş Yapılıyor..." : "Sisteme Giriş Yap 🚀"}
+          </button>
+        </form>
 
-          <Link
-            href="/yoklama/nfc"
-            className="group p-6 bg-slate-900 text-white rounded-2xl shadow-sm hover:shadow-lg transition duration-200 flex flex-col justify-between"
-          >
-            <div>
-              <div className="text-3xl mb-3">🎛️</div>
-              <h3 className="text-lg font-bold text-white group-hover:text-emerald-400 transition">
-                NFC Yoklama Ekranı
-              </h3>
-              <p className="text-slate-400 text-xs mt-1">
-                Kapanmayan koyu mod ekranı açın, salona giren öğrencilerin
-                kartını okutun.
-              </p>
-            </div>
-            <span className="text-xs font-semibold text-emerald-400 mt-4 inline-flex items-center gap-1">
-              İstasyonu Başlat →
-            </span>
-          </Link>
-
-          <Link
-            href="/muhasebe"
-            className="group p-6 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-300 transition duration-200 flex flex-col justify-between"
-          >
-            <div>
-              <div className="text-3xl mb-3">💰</div>
-              <h3 className="text-lg font-bold text-slate-800 group-hover:text-emerald-600 transition">
-                Muhasebe & WhatsApp
-              </h3>
-              <p className="text-slate-500 text-xs mt-1">
-                Ödemesi gelen velileri görün, tek tıkla WhatsApp hatırlatması
-                gönderin.
-              </p>
-            </div>
-            <span className="text-xs font-semibold text-emerald-600 mt-4 inline-flex items-center gap-1">
-              Muhasebeyi Aç →
-            </span>
-          </Link>
+        <div className="text-center pt-2 border-t border-slate-100">
+          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+            © Balans Cimnastik Akademi
+          </p>
         </div>
       </div>
     </div>

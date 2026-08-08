@@ -1,5 +1,4 @@
-import "./globals.css";
-import Navbar from "./components/Navbar";
+import "@/app/globals.css";
 
 export const metadata = {
   title: "Balans Cimnastik - Kurs Yönetim Sistemi",
@@ -9,14 +8,18 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="tr">
-      <body className="bg-slate-100 min-h-screen flex flex-col md:flex-row">
-        {/* SOL DİKEY SIDEBAR */}
-        <Navbar />
+      <body
+        suppressHydrationWarning={true}
+        className="relative min-h-screen bg-slate-950 text-slate-100 antialiased overflow-x-hidden"
+      >
+        {/* 🖼️ TÜM SAYFALARIN ARKA PLANINA KAPLANAN LOGO (FILIGRAN) */}
+        <div
+          className="fixed inset-0 pointer-events-none z-0 bg-center bg-no-repeat bg-contain opacity-10"
+          style={{ backgroundImage: "url('/logo.png')" }}
+        />
 
-        {/* SAĞ İÇERİK ALANI (MENÜ GENİŞLİĞİ KADAR SAĞA İTİLİR) */}
-        <main className="flex-1 md:pl-64 min-h-screen transition-all">
-          {children}
-        </main>
+        {/* İÇERİK KATMANI */}
+        <div className="relative z-10">{children}</div>
       </body>
     </html>
   );

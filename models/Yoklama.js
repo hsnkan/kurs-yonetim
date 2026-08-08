@@ -7,10 +7,13 @@ const YoklamaSchema = new mongoose.Schema(
       ref: "Ogrenci",
       required: true,
     },
-    tarih: {
-      type: Date,
-      default: Date.now,
+    tarih: { type: Date, default: Date.now },
+    durum: {
+      type: String,
+      enum: ["geldi", "gelmedi", "izinli"],
+      default: "geldi",
     },
+    yöntem: { type: String, enum: ["manuel", "nfc"], default: "manuel" },
   },
   { timestamps: true },
 );
