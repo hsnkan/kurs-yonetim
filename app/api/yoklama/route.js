@@ -16,25 +16,20 @@ export async function POST(request) {
       );
     }
 
-    // Temizlenmiş Ham Kart ID (Boşluklar ve gizli karakterler kaldırılır)
-    const temizCardId = String(cardId).trim();
+    // Kart ID'yi temizle (boşlukları sil)
+    const hamCardId = String(cardId).trim();
+    // Başındaki sıfırları silinmiş temiz versiyonu
+    const temizzCardId = hamCardId.replace(/^0+/, "");
 
-    // 🔍 Esnek Arama: Büyük/Küçük harf duyarsız regex araması
+    // 🔍 GELİŞMİŞ VE ESNEK ÖĞRENCİ ARAMASI
     const ogrenci = await Ogrenci.findOne({
       $or: [
-        { cardId: temizCardId },
-        { nfcId: temizCardId },
-        { cardId: { $regex: new RegExp(`^${temizCardId}$`, "i") } },
-        { nfcId: { $regex: new RegExp(`^${temizCardId}$`, "i") } },
-      ],
-      $and: [
-        {
-          $or: [
-            { durum: "aktif" },
-            { durum: "AKTIF" },
-            { durum: { $exists: false } },
-          ],
-        },
+        { cardId: hamCardId },
+        { nfcId: hamCardId },
+        { cardId: temizzCardId },
+        { nfcId: temizzCardId },
+        { cardId: { $regex: new RegExp(`^${hamCardId}$`, "i") } },
+        { nfcId: { $regex: new RegExp(`^${hamCardId}$`, "i") } },
       ],
     });
 
@@ -42,13 +37,13 @@ export async function POST(request) {
       return NextResponse.json(
         {
           success: false,
-          error: `Okunan Kart ID (${temizCardId}) sistemdeki aktif bir öğrenci ile eşleşmedi!`,
+          error: `Okunan Kart ID (${hamCardId}) sistemde hiçbir öğrenci ile eşleşmedi. Lütfen Öğrenci Düzenle ekranından bu kart ID'sini öğrenciye tanımlayınız.`,
         },
         { status: 404 },
       );
     }
 
-    // Bugün bu öğrenciye yoklama alınmış mı kontrol et
+    // 🗓️ BUGÜN İÇİN MÜKERRER YOKLAMA KONTROLÜ
     const bugunBaslangic = new Date();
     bugunBaslangic.setHours(0, 0, 0, 0);
 
@@ -64,7 +59,7 @@ export async function POST(request) {
       return NextResponse.json({
         success: true,
         zatenVar: true,
-        message: `${ogrenci.adSoyad} için bugün zaten yoklama kaydı mevcut.`,
+        message: `⚠️ ${ogrenci.adSoyad} için bugün zaten yoklama kaydı alınmış!`,
         ogrenci: {
           _id: ogrenci._id,
           adSoyad: ogrenci.adSoyad,
@@ -73,7 +68,7 @@ export async function POST(request) {
       });
     }
 
-    // Yeni Yoklama Kaydı Oluştur
+    // 📝 YENİ YOKLAMA KAYDI OLUŞTURMA
     const yeniYoklama = await Yoklama.create({
       ogrenciId: ogrenci._id,
       tarih: new Date(),
