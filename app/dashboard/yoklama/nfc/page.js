@@ -2,406 +2,237 @@
 
 import { useState, useEffect, useRef } from "react";
 
-export default function NfcTerminalPage() {
-  const [kartId, setKartId] = useState("");
-  const [sonOkutulan, setSonOkutulan] = useState(null);
-  const [hata, setHata] = useState("");
-  const [bugunkuGirisler, setBugunkuGirisler] = useState([]);
-  const [yukleniyor, setYukleniyor] = useState(false);
-  const [listeModalAcik, setListeModalAcik] = useState(false);
+export default function NfcYoklamaPage() {
+  const [cardIdInput, setCardIdInput] = useState("");
+  const [ogrenci, setOgrenci] = useState(null);
+  const [mesaj, setMesaj] = useState({ tip: "", metin: "" });
+  const [loading, setLoading] = useState(false);
+  const [yoklamaGecmisi, setYoklamaGecmisi] = useState([]);
+
+  // 🎯 INPUT ODAK REF'İ (OTOMATİK ODAKLANMA İÇİN)
   const inputRef = useRef(null);
 
-  // Öğrenci adını tüm olası veri yapılarından çeken yardımcı fonksiyon
-  const ogrenciAdiniGetir = (y) => {
-    if (!y) return "Öğrenci";
-    if (typeof y.ogrenciId === "object" && y.ogrenciId?.adSoyad) {
-      return y.ogrenciId.adSoyad;
-    }
-    if (typeof y.ogrenci === "object" && y.ogrenci?.adSoyad) {
-      return y.ogrenci.adSoyad;
-    }
-    if (typeof y.ogrenciId === "string" && y.ogrenciId) {
-      return y.ogrenciAdi || y.adSoyad || y.ogrenciId;
-    }
-    return y.ogrenciAdi || y.adSoyad || y.ogrenci || "Öğrenci";
-  };
-
-  // Öğrenci grubunu tüm olası veri yapılarından çeken yardımcı fonksiyon
-  const ogrenciGrubunuGetir = (y) => {
-    if (!y) return "Grup Belirtilmedi";
-    if (typeof y.ogrenciId === "object" && y.ogrenciId?.grup) {
-      return y.ogrenciId.grup;
-    }
-    if (typeof y.ogrenci === "object" && y.ogrenci?.grup) {
-      return y.ogrenci.grup;
-    }
-    return y.grup || y.grupAdi || "Grup Belirtilmedi";
-  };
-
-  const bugunGirisleriGetir = async () => {
-    try {
-      const bugunTarih = new Date().toISOString().split("T")[0];
-      const res = await fetch(`/api/yoklama?tarih=${bugunTarih}`);
-      const data = await res.json();
-      if (data.success) {
-        setBugunkuGirisler(data.data || []);
-      }
-    } catch (err) {
-      console.error("Yoklama verisi çekilemedi:", err);
+  // 1. SAYFA AÇILDIĞINDA VE HER İŞLEM SONRASI OTOMATİK ODAKLANMA
+  const odagiKoru = () => {
+    if (inputRef.current) {
+      inputRef.current.focus();
     }
   };
 
   useEffect(() => {
-    bugunGirisleriGetir();
-    if (inputRef.current) inputRef.current.focus();
+    // Sayfa yüklendiğinde odaklan
+    odagiKoru();
+
+    // Kullanıcı ekranda herhangi bir boş yere tıklasa dahi odağı NFC inputuna geri getir
+    const handleClickGlobal = () => {
+      odagiKoru();
+    };
+
+    window.addEventListener("click", handleClickGlobal);
+    return () => {
+      window.removeEventListener("click", handleClickGlobal);
+    };
   }, []);
 
-  const kartOkutIsle = async (e) => {
-    e.preventDefault();
+  // 2. URL PARAMETRESİ İLE GELEN KART ID KONTROLÜ (iOS Kestirmeler / QR İçin)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlCardId = urlParams.get("cardId");
+      if (urlCardId) {
+        setCardIdInput(urlCardId);
+        yoklamaIsle(urlCardId);
+      }
+    }
+  }, []);
+
+  // 3. KART OKUNDUĞUNDA YOKLAMA İŞLEME FONKSİYONU
+  const yoklamaIsle = async (okunanId) => {
+    const kartId = okunanId || cardIdInput;
     if (!kartId.trim()) return;
 
-    setHata("");
-    setSonOkutulan(null);
-    setYukleniyor(true);
-    const okunanKod = kartId.trim();
-    setKartId("");
+    setLoading(true);
+    setMesaj({ tip: "", metin: "" });
 
     try {
       const res = await fetch("/api/yoklama/nfc", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nfcKartId: okunanKod }),
+        body: JSON.stringify({ cardId: kartId.trim() }),
       });
+
       const data = await res.json();
 
       if (data.success) {
-        // Öğrenci adını API cevabından al
-        const gelenAd =
-          typeof data.ogrenci === "object"
-            ? data.ogrenci?.adSoyad
-            : data.ogrenci || data.data?.ogrenciAdi || "Öğrenci";
+        setOgrenci(data.ogrenci);
+        setMesaj({
+          tip: "basari",
+          metin: `✅ ${data.ogrenci.adSoyad} (${data.ogrenci.grup || "Grup Belirtilmedi"}) - Yoklama Başarıyla Alındı!`,
+        });
 
-        setSonOkutulan(gelenAd);
-        bugunGirisleriGetir();
-
-        // ⏱️ 2 Saniye sonra başarı mesajını kaldır
-        setTimeout(() => {
-          setSonOkutulan(null);
-        }, 2000);
+        // Geçmişe ekle
+        setYoklamaGecmisi((prev) => [
+          {
+            _id: Date.now(),
+            adSoyad: data.ogrenci.adSoyad,
+            grup: data.ogrenci.grup || "Grup Yok",
+            saat: new Date().toLocaleTimeString("tr-TR", {
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+            }),
+          },
+          ...prev,
+        ]);
       } else {
-        const mesaj = data.error || "NFC Kart / Kod Sistemde Bulunamadı!";
-        setHata(mesaj);
-
-        setTimeout(() => {
-          setHata("");
-        }, 2000);
+        setOgrenci(null);
+        setMesaj({
+          tip: "hata",
+          metin: `❌ ${data.error || "Kart sistemde eşleşmedi veya öğrenci bulunamadı!"}`,
+        });
       }
     } catch (err) {
-      setHata("Sunucu bağlantı hatası oluştu.");
-      setTimeout(() => {
-        setHata("");
-      }, 2000);
+      setMesaj({
+        tip: "hata",
+        metin: "✕ Sunucu bağlantı hatası oluştu!",
+      });
     } finally {
-      setYukleniyor(false);
-      if (inputRef.current) inputRef.current.focus();
+      setLoading(false);
+      setCardIdInput(""); // Inputu sıfırla
+      setTimeout(odagiKoru, 100); // Tıklamaya gerek kalmadan odağı anında yenile
     }
   };
 
-  // 📄 DERSE GİRİŞ YAPANLAR PDF ÇIKTISI OLUŞTURUCU
-  const yoklamaPdfCiktiAl = () => {
-    const bugunTarihStr = new Date().toLocaleDateString("tr-TR", {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-      weekday: "long",
-    });
-
-    const satirIcerikleri = bugunkuGirisler
-      .map((y, index) => {
-        const adSoyad = ogrenciAdiniGetir(y);
-        const grup = ogrenciGrubunuGetir(y);
-        const saat = y.tarih
-          ? new Date(y.tarih).toLocaleTimeString("tr-TR", {
-              hour: "2-digit",
-              minute: "2-digit",
-            })
-          : "--:--";
-
-        return `
-        <tr>
-          <td style="text-align: center; font-weight: bold;">${index + 1}</td>
-          <td style="text-align: center; font-weight: bold; color: #047857;">${saat}</td>
-          <td><strong>${adSoyad}</strong></td>
-          <td>${grup}</td>
-          <td style="text-align: center; color: #047857; font-weight: bold;">✓ Derse Katıldı</td>
-        </tr>
-      `;
-      })
-      .join("");
-
-    const printWindow = window.open("", "_blank");
-    const htmlIcerik = `
-      <!DOCTYPE html>
-      <html lang="tr">
-      <head>
-        <meta charset="utf-8">
-        <title>Günlük Yoklama Listesi - ${bugunTarihStr}</title>
-        <style>
-          @page { size: A4 portrait; margin: 15mm; }
-          * { box-sizing: border-box; }
-          body { font-family: 'Segoe UI', Arial, sans-serif; color: #0F172A; margin: 0; padding: 0; }
-          .header { text-align: center; border-bottom: 2px solid #0F172A; padding-bottom: 10px; margin-bottom: 20px; }
-          .title { font-size: 18pt; font-weight: 800; color: #0F172A; text-transform: uppercase; }
-          .sub { font-size: 11pt; font-weight: 700; color: #D97706; margin-top: 4px; }
-          .info-bar { display: flex; justify-content: space-between; font-size: 9.5pt; font-weight: bold; background-color: #F1F5F9; padding: 8px 12px; border-radius: 6px; margin-bottom: 15px; border: 1px solid #CBD5E1; }
-          table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-          th, td { border: 1px solid #CBD5E1; padding: 8px 10px; font-size: 9.5pt; }
-          th { background-color: #0F172A; color: #FFF; text-transform: uppercase; font-size: 9pt; }
-          .footer { margin-top: 40px; display: flex; justify-content: space-between; padding: 0 40px; font-size: 9.5pt; font-weight: bold; }
-          .sig-line { margin-top: 40px; border-bottom: 1.5px solid #0F172A; width: 180px; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <div class="title">BALANS CİMNASTİK AKADEMİSİ</div>
-          <div class="sub">GÜNLÜK DERSE GİRİŞ VE YOKLAMA RAPORU</div>
-        </div>
-
-        <div class="info-bar">
-          <span>Tarih: ${bugunTarihStr}</span>
-          <span>Toplam Derse Katılan Sporcu: ${bugunkuGirisler.length} Kişi</span>
-        </div>
-
-        <table>
-          <thead>
-            <tr>
-              <th width="40">#</th>
-              <th width="80">Giriş Saati</th>
-              <th>Sporcu Ad Soyad</th>
-              <th>Cimnastik Grubu</th>
-              <th width="110">Durum</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${
-              satirIcerikleri.length > 0
-                ? satirIcerikleri
-                : '<tr><td colSpan="5" style="text-align:center; padding: 20px;">Bugün derse giriş kaydı bulunmuyor.</td></tr>'
-            }
-          </tbody>
-        </table>
-
-        <div class="footer">
-          <div>
-            NFC Sistem Görevlisi
-            <div class="sig-line"></div>
-          </div>
-          <div>
-            Nöbetçi Antrenör İmza
-            <div class="sig-line"></div>
-          </div>
-        </div>
-
-        <script>
-          window.onload = function() {
-            setTimeout(function() { window.print(); }, 300);
-          };
-        </script>
-      </body>
-      </html>
-    `;
-
-    printWindow.document.open();
-    printWindow.document.write(htmlIcerik);
-    printWindow.document.close();
+  // ENTER TUŞUNA BASILDIĞINDA (NFC Okuyucular otomatik Enter gönderir)
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      yoklamaIsle(cardIdInput);
+    }
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 py-4 text-slate-900">
-      {/* BAŞLIK */}
-      <div className="text-center border-b border-slate-800 pb-4">
-        <h1 className="text-3xl font-black text-white tracking-wide">
-          NFC Yoklama Terminali
-        </h1>
-        <p className="text-sm font-semibold text-slate-300 mt-1">
-          Temassız kart/bileklik okutun veya kartı arızalı öğrenciler için Kodu
-          elle yazıp Enter'a basın.
-        </p>
+    <div className="space-y-8 text-slate-900 pb-12 font-sans max-w-4xl mx-auto">
+      {/* BAŞLIK VE CANLI DURUM PANOLARI */}
+      <div className="bg-[#0F172A] text-white p-6 md:p-8 rounded-3xl shadow-2xl border-2 border-amber-400/40 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-black tracking-wide text-amber-400 flex items-center gap-3 uppercase">
+            <span>🎴</span> Temassız NFC / Kartlı Yoklama
+          </h1>
+          <p className="text-xs md:text-sm font-semibold text-slate-300 mt-1">
+            Kartı cihaza veya okuyucuya yaklaştırınız. Ekrana tıklamanıza gerek
+            yoktur, sistem sürekli okumaya hazırdır.
+          </p>
+        </div>
+        <div className="bg-emerald-500 text-slate-950 px-4 py-2 rounded-2xl text-xs font-black shadow-lg flex items-center gap-2 animate-pulse whitespace-nowrap">
+          <span className="w-2.5 h-2.5 rounded-full bg-slate-950"></span>
+          SİSTEM OKUMAYA HAZIR
+        </div>
       </div>
 
-      {/* NFC OKUYUCU KART ALANI */}
-      <div className="bg-white p-8 rounded-3xl border-2 border-slate-200 shadow-2xl text-center space-y-6 text-slate-900">
-        <div className="w-20 h-20 bg-amber-100 border-2 border-amber-400 rounded-full mx-auto flex items-center justify-center text-amber-600 shadow-md relative">
-          <svg
-            className="w-10 h-10 animate-pulse"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457-.337-2.838-.937-4.067"
-            />
-          </svg>
+      {/* ⚡ OTOMATİK ODAKLANAN HIZLI OKUMA ALANI */}
+      <div className="bg-white p-8 rounded-3xl border-2 border-slate-300 shadow-xl text-center space-y-6">
+        <div className="inline-flex p-4 rounded-full bg-amber-100 text-amber-900 border-2 border-amber-400 text-3xl">
+          📡
         </div>
 
-        <form onSubmit={kartOkutIsle} className="max-w-md mx-auto space-y-3">
-          <label className="block text-xs font-black uppercase tracking-wider text-slate-700">
-            NFC Kart ID veya Manuel Kod
+        <div className="max-w-md mx-auto space-y-3">
+          <label className="block text-xs font-black text-slate-500 uppercase">
+            Sürekli Aktif NFC / Kart ID Girişi
           </label>
 
           <input
             ref={inputRef}
             type="text"
-            value={kartId}
-            onChange={(e) => setKartId(e.target.value)}
-            placeholder="Kart Okutun veya Kod Yazın..."
-            disabled={yukleniyor}
-            className="w-full p-4 border-4 border-slate-900 rounded-2xl text-center text-2xl font-black text-slate-900 focus:border-amber-500 outline-none transition-all shadow-inner bg-slate-50 focus:bg-white"
+            value={cardIdInput}
+            onChange={(e) => setCardIdInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Kartı okutun..."
             autoFocus
+            className="w-full text-center border-4 border-amber-400 focus:border-emerald-500 p-4 rounded-2xl text-xl font-black text-slate-900 bg-amber-50/30 focus:bg-emerald-50/30 outline-none shadow-inner transition-all"
           />
 
-          <button
-            type="submit"
-            disabled={yukleniyor}
-            className="w-full bg-[#0F172A] hover:bg-slate-800 text-amber-400 font-black py-3.5 rounded-xl transition-all shadow-md text-sm uppercase tracking-wider"
+          <p className="text-[11px] font-bold text-slate-400">
+            * İmleç otomatik olarak bu alandadır. Kart dokundurulduğunda işlem
+            anında tamamlanır.
+          </p>
+        </div>
+
+        {/* BİLDİRİM VE DURUM MESAJLARI */}
+        {mesaj.metin && (
+          <div
+            className={`p-4 rounded-2xl font-black text-sm border-2 shadow-md transition-all ${
+              mesaj.tip === "basari"
+                ? "bg-emerald-100 text-emerald-950 border-emerald-400"
+                : "bg-rose-100 text-rose-950 border-rose-400"
+            }`}
           >
-            {yukleniyor ? "İşleniyor..." : "Girişi Onayla (Enter)"}
-          </button>
-        </form>
-
-        {/* 🔔 2 SANİYE SONRA OTOMATİK KAYBOLAN BAŞARI BİLDİRİMİ */}
-        {sonOkutulan && (
-          <div className="p-5 max-w-md mx-auto rounded-2xl bg-emerald-100 border-2 border-emerald-500 text-emerald-950 font-black text-xl animate-bounce shadow-md">
-            ✓ {sonOkutulan} - Derse Giriş Kaydedildi!
-          </div>
-        )}
-
-        {/* 🔔 2 SANİYE SONRA OTOMATİK KAYBOLAN HATA BİLDİRİMİ */}
-        {hata && (
-          <div className="p-5 max-w-md mx-auto rounded-2xl bg-rose-100 border-2 border-rose-500 text-rose-950 font-black text-base shadow-md">
-            ✕ {hata}
+            {mesaj.metin}
           </div>
         )}
       </div>
 
-      {/* BUGÜN GİRİŞ YAPANLAR KART KUTUSU */}
-      <div className="bg-white rounded-3xl border-2 border-slate-200 shadow-xl overflow-hidden text-slate-900 p-6 flex flex-col sm:flex-row justify-between items-center gap-4">
-        <div className="flex items-center space-x-3">
-          <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></div>
-          <div>
-            <h2 className="text-lg font-black text-slate-900">
-              Bugün Derse Giriş Yapanlar ({bugunkuGirisler.length} Sporcu)
-            </h2>
-            <p className="text-xs font-bold text-slate-500">
-              Yoklama verileri arka planda güvenle işlenmektedir.
+      {/* SON OKUNAN SPORCU DETAY KARTI */}
+      {ogrenci && (
+        <div className="bg-emerald-600 text-white p-6 rounded-3xl shadow-xl flex items-center justify-between border-2 border-emerald-400">
+          <div className="space-y-1">
+            <span className="text-[10px] font-black uppercase text-emerald-200">
+              Son Derse Katılan Sporcu
+            </span>
+            <h2 className="text-2xl font-black">{ogrenci.adSoyad}</h2>
+            <p className="text-xs font-bold text-emerald-100">
+              Cimnastik Grubu:{" "}
+              <strong>{ogrenci.grup || "Grup Belirtilmedi"}</strong>
             </p>
           </div>
-        </div>
-
-        {/* 📋 GİRİŞ YAPAN ÖĞRENCİ LİSTESİ VE PDF ÇIKTI BUTONU */}
-        <button
-          onClick={() => setListeModalAcik(true)}
-          className="bg-[#0F172A] hover:bg-slate-800 text-amber-400 font-black px-5 py-3 rounded-2xl text-xs flex items-center gap-2 shadow-lg transition-all border border-slate-700 w-full sm:w-auto justify-center"
-        >
-          <span>📋</span>
-          <span>Giriş Yapan Öğrenci Listesi & PDF Çıktı</span>
-        </button>
-      </div>
-
-      {/* 📋 GİRİŞ YAPAN ÖĞRENCİLER PENCERESİ (MODAL) VE PDF İNDİRME */}
-      {listeModalAcik && (
-        <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl border-2 border-slate-900 max-w-2xl w-full p-6 shadow-2xl space-y-4 text-slate-900 relative max-h-[85vh] flex flex-col">
-            <button
-              onClick={() => setListeModalAcik(false)}
-              className="absolute top-4 right-4 font-black text-xl text-slate-400 hover:text-slate-900"
-            >
-              ✕
-            </button>
-
-            <div className="flex justify-between items-center border-b border-slate-200 pb-3 pr-8">
-              <div>
-                <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">
-                  <span>📋</span> Bugün Derse Giriş Yapan Sporcular
-                </h3>
-                <p className="text-xs font-bold text-slate-500 mt-0.5">
-                  Toplam {bugunkuGirisler.length} sporcu kart okutarak giriş
-                  yaptı.
-                </p>
-              </div>
-
-              <button
-                onClick={yoklamaPdfCiktiAl}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-black px-4 py-2.5 rounded-xl text-xs flex items-center gap-1.5 shadow-md"
-              >
-                <span>📄</span>
-                <span>PDF Çıktısı Al / Yazdır</span>
-              </button>
-            </div>
-
-            {/* TABLO LİSTESİ */}
-            <div className="overflow-y-auto flex-1 pr-1">
-              {bugunkuGirisler.length === 0 ? (
-                <div className="text-center text-slate-400 font-bold py-12">
-                  <p className="text-3xl mb-1">🏃‍♂️</p>
-                  <p>Bugün henüz hiç NFC kart giriş kaydı alınmadı.</p>
-                </div>
-              ) : (
-                <table className="w-full text-left border-collapse">
-                  <thead className="bg-slate-900 text-white uppercase text-[10px] font-black tracking-wider sticky top-0">
-                    <tr>
-                      <th className="p-3">Saat</th>
-                      <th className="p-3">Öğrenci Ad Soyad</th>
-                      <th className="p-3">Grubu</th>
-                      <th className="p-3 text-right">Durum</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 text-xs font-bold">
-                    {bugunkuGirisler.map((y, idx) => (
-                      <tr
-                        key={y._id || idx}
-                        className="hover:bg-emerald-50/40 transition-colors"
-                      >
-                        <td className="p-3 text-emerald-700 font-mono font-black">
-                          {y.tarih
-                            ? new Date(y.tarih).toLocaleTimeString("tr-TR", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })
-                            : "--:--"}
-                        </td>
-                        <td className="p-3 text-slate-900 font-black">
-                          {ogrenciAdiniGetir(y)}
-                        </td>
-                        <td className="p-3 text-slate-600">
-                          {ogrenciGrubunuGetir(y)}
-                        </td>
-                        <td className="p-3 text-right">
-                          <span className="bg-emerald-100 text-emerald-900 text-[10px] font-black px-2 py-1 rounded-lg border border-emerald-300">
-                            ✓ Katıldı
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-
-            <div className="border-t border-slate-200 pt-3 flex justify-end">
-              <button
-                onClick={() => setListeModalAcik(false)}
-                className="bg-slate-200 hover:bg-slate-300 text-slate-800 font-black px-5 py-2 rounded-xl text-xs"
-              >
-                Pencereyi Kapat
-              </button>
-            </div>
-          </div>
+          <span className="text-4xl bg-emerald-700 p-3 rounded-2xl border border-emerald-400">
+            🤸‍♀️
+          </span>
         </div>
       )}
+
+      {/* ANLIK CANLI YOKLAMA AKIŞI / GEÇMİŞİ */}
+      <div className="bg-white rounded-3xl border-2 border-slate-300 shadow-xl overflow-hidden">
+        <div className="p-4 bg-slate-900 text-white flex justify-between items-center">
+          <h2 className="text-xs font-black uppercase tracking-wider flex items-center gap-2">
+            <span>📋</span> Bu Oturumda Alınan Yoklamalar (
+            {yoklamaGecmisi.length})
+          </h2>
+          <span className="text-[10px] text-amber-400 font-bold">
+            Canlı Akış
+          </span>
+        </div>
+
+        <div className="divide-y-2 divide-slate-100">
+          {yoklamaGecmisi.length === 0 ? (
+            <div className="p-8 text-center text-slate-400 font-bold text-xs">
+              Henüz bu oturumda kart okutulmadı.
+            </div>
+          ) : (
+            yoklamaGecmisi.map((item) => (
+              <div
+                key={item._id}
+                className="p-4 flex justify-between items-center hover:bg-slate-50 font-bold text-xs"
+              >
+                <div>
+                  <span className="font-black text-slate-950 text-sm">
+                    {item.adSoyad}
+                  </span>
+                  <span className="text-slate-500 ml-2">({item.grup})</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-emerald-700 font-mono font-black">
+                    {item.saat}
+                  </span>
+                  <span className="bg-emerald-100 text-emerald-900 text-[10px] font-black px-2 py-0.5 rounded-md border border-emerald-300">
+                    ✓ Katıldı
+                  </span>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
     </div>
   );
 }
