@@ -6,112 +6,92 @@ import Yoklama from "@/models/Yoklama";
 export async function POST(request) {
   try {
     await dbConnect();
-    const { nfcKartId } = await request.json();
+    const body = await request.json();
+    const { cardId } = body;
 
-    if (!nfcKartId) {
+    if (!cardId) {
       return NextResponse.json(
-        { success: false, error: "NFC Kart ID Okunamadı" },
+        { success: false, error: "Kart ID'si gönderilmedi!" },
         { status: 400 },
       );
     }
 
-    // 1. Kart ID'sine ait aktif öğrenciyi bul
+    // Temizlenmiş Ham Kart ID (Boşluklar ve gizli karakterler kaldırılır)
+    const temizCardId = String(cardId).trim();
+
+    // 🔍 Esnek Arama: Büyük/Küçük harf duyarsız regex araması
     const ogrenci = await Ogrenci.findOne({
-      nfcKartId: nfcKartId.trim(),
-      durum: "aktif",
+      $or: [
+        { cardId: temizCardId },
+        { nfcId: temizCardId },
+        { cardId: { $regex: new RegExp(`^${temizCardId}$`, "i") } },
+        { nfcId: { $regex: new RegExp(`^${temizCardId}$`, "i") } },
+      ],
+      $and: [
+        {
+          $or: [
+            { durum: "aktif" },
+            { durum: "AKTIF" },
+            { durum: { $exists: false } },
+          ],
+        },
+      ],
     });
 
     if (!ogrenci) {
       return NextResponse.json(
-        { success: false, error: "Kart Tanımlı Değil Veya Öğrenci Pasif!" },
+        {
+          success: false,
+          error: `Okunan Kart ID (${temizCardId}) sistemdeki aktif bir öğrenci ile eşleşmedi!`,
+        },
         { status: 404 },
       );
     }
 
-    // 2. MÜKERRER KAYIT KONTROLÜ: Bugün bu öğrenci zaten giriş yapmış mı?
+    // Bugün bu öğrenciye yoklama alınmış mı kontrol et
     const bugunBaslangic = new Date();
     bugunBaslangic.setHours(0, 0, 0, 0);
 
     const bugunBitis = new Date();
     bugunBitis.setHours(23, 59, 59, 999);
 
-    const mevcutGiris = await Yoklama.findOne({
+    const mevcutYoklama = await Yoklama.findOne({
       ogrenciId: ogrenci._id,
       tarih: { $gte: bugunBaslangic, $lte: bugunBitis },
     });
 
-    if (mevcutGiris) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: `⚠️ ${ogrenci.adSoyad} bugün zaten derse giriş yaptı!`,
+    if (mevcutYoklama) {
+      return NextResponse.json({
+        success: true,
+        zatenVar: true,
+        message: `${ogrenci.adSoyad} için bugün zaten yoklama kaydı mevcut.`,
+        ogrenci: {
+          _id: ogrenci._id,
+          adSoyad: ogrenci.adSoyad,
+          grup: ogrenci.grup || "Grup Yok",
         },
-        { status: 400 },
-      );
+      });
     }
 
-    // 3. Bugün için ilk giriş kaydını oluştur
-    const yeniGiris = await Yoklama.create({
+    // Yeni Yoklama Kaydı Oluştur
+    const yeniYoklama = await Yoklama.create({
       ogrenciId: ogrenci._id,
-      ogrenciAdi: ogrenci.adSoyad,
-      grup: ogrenci.grup,
       tarih: new Date(),
+      durum: "geldi",
+      yoklamaTipi: "nfc",
     });
 
     return NextResponse.json({
       success: true,
-      message: `${ogrenci.adSoyad} Derse Giriş Yaptı!`,
-      ogrenci: ogrenci.adSoyad,
-      data: {
-        _id: yeniGiris._id,
-        ogrenciId: {
-          _id: ogrenci._id,
-          adSoyad: ogrenci.adSoyad,
-          grup: ogrenci.grup,
-        },
-        ogrenciAdi: ogrenci.adSoyad,
-        grup: ogrenci.grup,
-        saat: new Date().toLocaleTimeString("tr-TR", {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        tarih: new Date(),
+      ogrenci: {
+        _id: ogrenci._id,
+        adSoyad: ogrenci.adSoyad,
+        grup: ogrenci.grup || "Grup Yok",
       },
+      yoklama: yeniYoklama,
     });
   } catch (error) {
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 500 },
-    );
-  }
-}
-
-// Bugün veya Belirtilen Tarihte Derse Giriş Yapanları Getir
-export async function GET(request) {
-  try {
-    await dbConnect();
-    const { searchParams } = new URL(request.url);
-    const tarihParam = searchParams.get("tarih");
-
-    let baslangic = new Date();
-    let bitis = new Date();
-
-    if (tarihParam) {
-      baslangic = new Date(tarihParam);
-      bitis = new Date(tarihParam);
-    }
-
-    baslangic.setHours(0, 0, 0, 0);
-    bitis.setHours(23, 59, 59, 999);
-
-    const bugunkuGirisler = await Yoklama.find({
-      tarih: { $gte: baslangic, $lte: bitis },
-    })
-      .populate("ogrenciId", "adSoyad grup")
-      .sort({ tarih: -1 });
-
-    return NextResponse.json({ success: true, data: bugunkuGirisler });
-  } catch (error) {
+    console.error("🔴 NFC YOKLAMA API HATASI:", error);
     return NextResponse.json(
       { success: false, error: error.message },
       { status: 500 },
